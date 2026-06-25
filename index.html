@@ -20,6 +20,21 @@
             backdrop-filter: blur(12px);
             border: 1px solid rgba(255, 255, 255, 0.05);
         }
+        /* Custom scrollbar for dropdown */
+        #suggestions-dropdown::-webkit-scrollbar {
+            width: 8px;
+        }
+        #suggestions-dropdown::-webkit-scrollbar-track {
+            background: #1e293b;
+            border-radius: 8px;
+        }
+        #suggestions-dropdown::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 8px;
+        }
+        #suggestions-dropdown::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col justify-between antialiased">
@@ -54,7 +69,7 @@
                 Consulta tu Predio de Forma Instantánea
             </h2>
             <p class="text-slate-400 text-sm sm:text-base">
-                Ingresa el código catastral o la dirección del inmueble para conocer la variación del avalúo y el valor total del impuesto a pagar para la vigencia actual.
+                Ingresa el código catastral, número de matrícula o dirección del inmueble para conocer la variación del avalúo y el valor total del impuesto a pagar para la vigencia actual.
             </p>
         </div>
 
@@ -66,23 +81,31 @@
         </div>
 
         <!-- Search Bar Container (Hidden until CSV loaded) -->
-        <div id="search-container" class="hidden max-w-2xl mx-auto mb-12">
-            <div class="flex flex-col sm:flex-row gap-2 bg-slate-900/90 p-2 rounded-2xl border border-slate-800 shadow-2xl">
+        <div id="search-container" class="hidden max-w-2xl mx-auto mb-12 relative">
+            <div class="flex flex-col sm:flex-row gap-2 bg-slate-900/90 p-2 rounded-2xl border border-slate-800 shadow-2xl relative z-20">
                 <div class="relative flex-grow">
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
                         <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                         </svg>
                     </div>
+                    <!-- Added oninput for live search/suggestions -->
                     <input type="text" id="search-input" 
                         class="w-full pl-10 pr-4 py-3 bg-transparent text-white placeholder-slate-500 focus:outline-none text-sm rounded-xl" 
-                        placeholder="Ej: 040000000119... o Dirección del predio"
-                        onkeypress="if(event.key === 'Enter') performSearch()">
+                        placeholder="Ej: Código, Matrícula o Dirección (ej: CR 3)..."
+                        autocomplete="off"
+                        oninput="handleInput()"
+                        onkeypress="if(event.key === 'Enter') selectFirstSuggestionOrSearch()">
                 </div>
-                <button onclick="performSearch()" 
+                <button onclick="selectFirstSuggestionOrSearch()" 
                     class="bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm px-6 py-3 rounded-xl transition duration-200 shadow-lg shadow-blue-500/20 active:scale-98 cursor-pointer">
-                    Buscar Predio
+                    Buscar
                 </button>
+            </div>
+            
+            <!-- Suggestions Dropdown -->
+            <div id="suggestions-dropdown" class="hidden absolute top-full left-0 w-full mt-2 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl z-10 max-h-60 overflow-y-auto">
+                <!-- Suggestion items will be injected here -->
             </div>
             
             <!-- Error messages -->
@@ -200,9 +223,19 @@
                             <span class="text-slate-400">Avalúo Anterior:</span>
                             <span id="data-avaluo-anterior" class="font-medium text-slate-300">$0</span>
                         </div>
+                        <div class="flex flex-col border-b border-slate-800/50 pb-2">
+                            <div class="flex justify-between">
+                                <span class="text-slate-400">Área Terreno Actual:</span>
+                                <span id="data-areas-terreno-actual" class="font-medium text-slate-200">0 m²</span>
+                            </div>
+                            <div class="flex justify-between mt-1">
+                                <span class="text-slate-500 text-xs">Área Terreno Anterior:</span>
+                                <span id="data-areas-terreno-anterior" class="font-medium text-slate-400 text-xs">0 m²</span>
+                            </div>
+                        </div>
                         <div class="flex justify-between border-b border-slate-800/50 pb-2">
-                            <span class="text-slate-400">Área Terreno / Const.:</span>
-                            <span id="data-areas" class="font-medium text-slate-200">0 m² / 0 m²</span>
+                            <span class="text-slate-400">Área Construcción:</span>
+                            <span id="data-areas-const" class="font-medium text-slate-200">0 m²</span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-slate-400">Estrato:</span>
@@ -217,7 +250,7 @@
     </main>
 
     <!-- Footer -->
-    <footer class="border-t border-slate-800 bg-slate-950/80 py-6 text-center text-xs text-slate-500">
+    <footer class="border-t border-slate-800 bg-slate-950/80 py-6 text-center text-xs text-slate-500 mt-auto">
         <div class="max-w-6xl mx-auto px-4">
             <p>© 2026 Portal de Consulta de Información Catastral y Financiera.</p>
             <p class="mt-1 text-slate-600">Desplegado de forma estática en GitHub Pages de manera segura sin almacenamiento de datos en servidores externos.</p>
@@ -227,6 +260,7 @@
     <!-- Core Interactive Logic Script -->
     <script>
         let database = [];
+        let currentSuggestions = [];
 
         // Load the local data.csv on page startup
         window.addEventListener('DOMContentLoaded', () => {
@@ -253,12 +287,25 @@
                     console.error("Error cargando CSV:", err);
                 }
             });
+
+            // Close suggestions dropdown when clicking outside
+            document.addEventListener('click', function(event) {
+                const searchContainer = document.getElementById('search-container');
+                const dropdown = document.getElementById('suggestions-dropdown');
+                if (!searchContainer.contains(event.target)) {
+                    dropdown.classList.add('hidden');
+                }
+            });
         });
 
-        // Helper to normalize the cadastral code (removes leading single quotes if present)
-        function cleanString(str) {
+        // Helper to normalize strings for flexible matching (removes accents, leading quotes, lowers case)
+        function normalizeString(str) {
             if (!str) return '';
-            return str.toString().replace(/'/g, '').trim();
+            return str.toString()
+                .replace(/'/g, '')
+                .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Remove accents
+                .toLowerCase()
+                .trim();
         }
 
         function formatCurrency(value) {
@@ -277,8 +324,6 @@
                 return '0.00%';
             }
             let num = parseFloat(value);
-            // If the values in CSV are decimals (e.g. 0.054 for 5.4%), we adjust it.
-            // Check if percentage looks like a fraction or explicit integer
             return num.toFixed(2) + '%';
         }
 
@@ -292,35 +337,106 @@
             resultsEl.classList.add('hidden');
         }
 
-        function performSearch() {
-            const inputVal = document.getElementById('search-input').value.trim().toLowerCase();
-            const errorEl = document.getElementById('error-message');
-            const resultsEl = document.getElementById('results-section');
-
-            errorEl.classList.add('hidden');
-
-            if (!inputVal) {
-                showError("Por favor, ingresa un criterio de búsqueda válido.");
+        // Live Search Handling (Dropdown)
+        function handleInput() {
+            const inputVal = document.getElementById('search-input').value;
+            const normalizedInput = normalizeString(inputVal);
+            const dropdown = document.getElementById('suggestions-dropdown');
+            
+            if (normalizedInput.length < 3) {
+                dropdown.classList.add('hidden');
+                currentSuggestions = [];
                 return;
             }
 
-            // Filter data by code or direction
-            const match = database.find(row => {
-                const codCatastral = cleanString(row['Codigo catastral']).toLowerCase();
-                const direccion = (row['Direccion del predio'] || '').toString().toLowerCase();
-                const folio = (row['FOLIO MATRICULA'] || '').toString().toLowerCase();
+            // Split input into words for more flexible matching (e.g., "cr 3" matches "CRA 3", etc. if we want, but simple include is often better for addresses)
+            // We will do a simple includes, but on the normalized string
+            
+            currentSuggestions = database.filter(row => {
+                const codCatastral = normalizeString(row['Codigo catastral']);
+                const direccion = normalizeString(row['Direccion del predio']);
+                const folio = normalizeString(row['FOLIO MATRICULA']);
                 
-                return codCatastral.includes(inputVal) || 
-                       direccion.includes(inputVal) || 
-                       folio.includes(inputVal);
-            });
+                return codCatastral.includes(normalizedInput) || 
+                       direccion.includes(normalizedInput) || 
+                       folio.includes(normalizedInput);
+            }).slice(0, 10); // Limit to 10 suggestions
 
-            if (!match) {
-                showError("No se encontró ningún predio registrado con el código catastral, folio o dirección ingresada.");
-                return;
+            if (currentSuggestions.length > 0) {
+                renderSuggestions();
+                dropdown.classList.remove('hidden');
+            } else {
+                dropdown.classList.add('hidden');
             }
+        }
 
-            displayResult(match);
+        function renderSuggestions() {
+            const dropdown = document.getElementById('suggestions-dropdown');
+            dropdown.innerHTML = '';
+
+            currentSuggestions.forEach((predio, index) => {
+                const cod = (predio['Codigo catastral'] || '').replace(/'/g, '');
+                const dir = predio['Direccion del predio'] || 'Sin dirección';
+                const folio = predio['FOLIO MATRICULA'] || 'Sin matrícula';
+                const propietario = predio['Nombre'] || 'Sin nombre';
+
+                const item = document.createElement('div');
+                item.className = 'p-3 hover:bg-slate-700 cursor-pointer border-b border-slate-700/50 last:border-0 transition-colors';
+                item.onclick = () => selectSuggestion(index);
+                
+                item.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div class="flex-grow">
+                            <p class="text-sm text-white font-medium truncate">${dir}</p>
+                            <p class="text-xs text-slate-400 mt-0.5 truncate"><span class="text-slate-500">Propietario:</span> ${propietario}</p>
+                        </div>
+                        <div class="text-right ml-2 shrink-0">
+                            <p class="text-xs text-blue-400 font-mono">${cod}</p>
+                            <p class="text-[10px] text-slate-500 mt-0.5"><span class="text-slate-600">Matrícula:</span> ${folio}</p>
+                        </div>
+                    </div>
+                `;
+                dropdown.appendChild(item);
+            });
+        }
+
+        function selectSuggestion(index) {
+            const predio = currentSuggestions[index];
+            document.getElementById('search-input').value = (predio['Direccion del predio'] || '').trim();
+            document.getElementById('suggestions-dropdown').classList.add('hidden');
+            
+            // Clear error if any
+            document.getElementById('error-message').classList.add('hidden');
+            
+            displayResult(predio);
+        }
+
+        function selectFirstSuggestionOrSearch() {
+            const dropdown = document.getElementById('suggestions-dropdown');
+            const inputVal = document.getElementById('search-input').value;
+            
+            if (currentSuggestions.length > 0 && !dropdown.classList.contains('hidden')) {
+                // User pressed enter or search button while suggestions were visible
+                selectSuggestion(0);
+            } else if (inputVal.trim() !== '') {
+                // Fallback to strict search if they just typed and hit enter fast
+                 const normalizedInput = normalizeString(inputVal);
+                 const match = database.find(row => {
+                    return normalizeString(row['Codigo catastral']).includes(normalizedInput) || 
+                           normalizeString(row['Direccion del predio']).includes(normalizedInput) || 
+                           normalizeString(row['FOLIO MATRICULA']).includes(normalizedInput);
+                });
+
+                if (match) {
+                     document.getElementById('error-message').classList.add('hidden');
+                     displayResult(match);
+                } else {
+                     showError("No se encontró ningún predio registrado con los datos ingresados.");
+                }
+            } else {
+                 showError("Por favor, ingresa un criterio de búsqueda.");
+            }
+            dropdown.classList.add('hidden');
         }
 
         function displayResult(predio) {
@@ -335,7 +451,8 @@
             const avaluoActual = parseFloat(predio['Avaluo actual']) || 0;
             const avaluoAnterior = parseFloat(predio['Avaluo anterior']) || 0;
             
-            const metrosTerreno = predio['Metros del terreno actual'] || '0';
+            const metrosTerrenoActual = predio['Metros del terreno actual'] || '0';
+            const metrosTerrenoAnterior = predio['Metros terreno anterior'] || '0'; // Added previous terrain
             const metrosConstruccion = predio['Construccion actual'] || '0';
 
             // Inject core KPIs
@@ -376,11 +493,16 @@
             document.getElementById('data-folio').innerText = predio['FOLIO MATRICULA'] || 'No Registrado';
 
             // Inject technical data
-            document.getElementById('data-codigo').innerText = cleanString(predio['Codigo catastral']);
+            document.getElementById('data-codigo').innerText = (predio['Codigo catastral'] || '').replace(/'/g, '');
             document.getElementById('data-destino').innerText = predio['Destino economico actual'] || '-';
             document.getElementById('data-avaluo-actual').innerText = formatCurrency(avaluoActual);
             document.getElementById('data-avaluo-anterior').innerText = formatCurrency(avaluoAnterior);
-            document.getElementById('data-areas').innerText = `${metrosTerreno} m² / ${metrosConstruccion} m²`;
+            
+            // New Terrain Area Handling
+            document.getElementById('data-areas-terreno-actual').innerText = `${metrosTerrenoActual} m²`;
+            document.getElementById('data-areas-terreno-anterior').innerText = `${metrosTerrenoAnterior} m²`;
+            document.getElementById('data-areas-const').innerText = `${metrosConstruccion} m²`;
+            
             document.getElementById('data-estrato').innerText = predio['Estrato'] || 'No reportado';
 
             // Reveal animations
