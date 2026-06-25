@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Portal de Consulta Catastral</title>
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <!-- PapaParse CDN to parse CSV in browser -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
@@ -20,7 +18,7 @@
             backdrop-filter: blur(12px);
             border: 1px solid rgba(255, 255, 255, 0.05);
         }
-        /* Custom scrollbar for dropdown */
+        /* Personalización del scroll para las sugerencias */
         #suggestions-dropdown::-webkit-scrollbar {
             width: 8px;
         }
@@ -39,13 +37,12 @@
 </head>
 <body class="min-h-screen flex flex-col justify-between antialiased">
 
-    <!-- Navbar -->
     <header class="border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-50">
         <div class="max-w-6xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
             <div class="flex items-center space-x-3">
                 <div class="bg-blue-600 p-2 rounded-xl text-white shadow-lg shadow-blue-500/20">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="box-icon d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
                     </svg>
                 </div>
                 <div>
@@ -60,10 +57,8 @@
         </div>
     </header>
 
-    <!-- Main Content -->
     <main class="flex-grow max-w-6xl w-full mx-auto px-4 py-8">
         
-        <!-- Hero and Search Section -->
         <div class="text-center max-w-2xl mx-auto mb-10">
             <h2 class="text-3xl sm:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400 mb-4">
                 Consulta tu Predio de Forma Instantánea
@@ -73,14 +68,12 @@
             </p>
         </div>
 
-        <!-- Loader State -->
         <div id="loading-state" class="text-center py-12 glass-card rounded-2xl max-w-md mx-auto shadow-xl">
             <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent mb-4"></div>
             <p class="text-slate-300 font-medium">Cargando base de datos catastral...</p>
             <p class="text-xs text-slate-500 mt-2">Esto solo tomará un segundo.</p>
         </div>
 
-        <!-- Search Bar Container (Hidden until CSV loaded) -->
         <div id="search-container" class="hidden max-w-2xl mx-auto mb-12 relative">
             <div class="flex flex-col sm:flex-row gap-2 bg-slate-900/90 p-2 rounded-2xl border border-slate-800 shadow-2xl relative z-20">
                 <div class="relative flex-grow">
@@ -89,7 +82,6 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                         </svg>
                     </div>
-                    <!-- Added oninput for live search/suggestions -->
                     <input type="text" id="search-input" 
                         class="w-full pl-10 pr-4 py-3 bg-transparent text-white placeholder-slate-500 focus:outline-none text-sm rounded-xl" 
                         placeholder="Ej: Código, Matrícula o Dirección (ej: CR 3)..."
@@ -103,12 +95,9 @@
                 </button>
             </div>
             
-            <!-- Suggestions Dropdown -->
             <div id="suggestions-dropdown" class="hidden absolute top-full left-0 w-full mt-2 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl z-10 max-h-60 overflow-y-auto">
-                <!-- Suggestion items will be injected here -->
             </div>
             
-            <!-- Error messages -->
             <div id="error-message" class="hidden mt-4 p-4 bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-xl flex items-center gap-2">
                 <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
@@ -117,12 +106,9 @@
             </div>
         </div>
 
-        <!-- Results Dashboard Section (Hidden by default) -->
         <div id="results-section" class="hidden space-y-6 animate-fade-in">
             
-            <!-- KPI Cards Grid -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <!-- KPI 1: Valor a Pagar -->
                 <div class="glass-card p-6 rounded-2xl relative overflow-hidden shadow-lg shadow-slate-950/40">
                     <div class="absolute top-0 right-0 bg-blue-500/10 text-blue-400 p-3 rounded-bl-2xl">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -137,7 +123,6 @@
                     </div>
                 </div>
 
-                <!-- KPI 2: Impuesto Anterior -->
                 <div class="glass-card p-6 rounded-2xl relative overflow-hidden shadow-lg shadow-slate-950/40">
                     <div class="absolute top-0 right-0 bg-slate-800 text-slate-400 p-3 rounded-bl-2xl">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -152,11 +137,8 @@
                     </div>
                 </div>
 
-                <!-- KPI 3: Variación -->
                 <div id="kpi-variacion-card" class="glass-card p-6 rounded-2xl relative overflow-hidden shadow-lg shadow-slate-950/40">
-                    <div id="kpi-variacion-icon-container" class="absolute top-0 right-0 p-3 rounded-bl-2xl">
-                        <!-- Icon injected dynamically -->
-                    </div>
+                    <div id="kpi-variacion-icon-container" class="absolute top-0 right-0 p-3 rounded-bl-2xl"></div>
                     <p class="text-sm font-medium text-slate-400">Incremento del Impuesto</p>
                     <h3 id="kpi-variacion-pct" class="text-3xl font-bold mt-2">0.00%</h3>
                     <div class="mt-4 flex items-center gap-1.5 text-xs text-slate-400">
@@ -166,9 +148,7 @@
                 </div>
             </div>
 
-            <!-- Property Information Split Layout -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Left: Contribuyente y Predio -->
                 <div class="glass-card p-6 rounded-2xl lg:col-span-2 space-y-6 shadow-lg shadow-slate-950/40">
                     <h4 class="text-lg font-bold text-white border-b border-slate-800 pb-3 flex items-center gap-2">
                         <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
@@ -199,7 +179,6 @@
                     </div>
                 </div>
 
-                <!-- Right: Avalúos y Datos Técnicos -->
                 <div class="glass-card p-6 rounded-2xl space-y-6 shadow-lg shadow-slate-950/40">
                     <h4 class="text-lg font-bold text-white border-b border-slate-800 pb-3 flex items-center gap-2">
                         <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path></svg>
@@ -224,7 +203,6 @@
                             <span id="data-avaluo-anterior" class="font-medium text-slate-300">$0</span>
                         </div>
                         
-                        <!-- Áreas de Terreno -->
                         <div class="flex flex-col border-b border-slate-800/50 pb-2">
                             <div class="flex justify-between">
                                 <span class="text-slate-400">Área Terreno Actual:</span>
@@ -236,7 +214,6 @@
                             </div>
                         </div>
                         
-                        <!-- Áreas de Construcción -->
                         <div class="flex flex-col border-b border-slate-800/50 pb-2">
                             <div class="flex justify-between">
                                 <span class="text-slate-400">Área Construcción Actual:</span>
@@ -257,10 +234,8 @@
             </div>
 
         </div>
-
     </main>
 
-    <!-- Footer -->
     <footer class="border-t border-slate-800 bg-slate-950/80 py-6 text-center text-xs text-slate-500 mt-auto">
         <div class="max-w-6xl mx-auto px-4">
             <p>© 2026 Portal de Consulta de Información Catastral y Financiera.</p>
@@ -268,12 +243,11 @@
         </div>
     </footer>
 
-    <!-- Core Interactive Logic Script -->
     <script>
         let database = [];
         let currentSuggestions = [];
 
-        // Load the local data.csv on page startup
+        // Cargar archivo CSV al inicio
         window.addEventListener('DOMContentLoaded', () => {
             const loader = document.getElementById('loading-state');
             const searchBox = document.getElementById('search-container');
@@ -293,13 +267,12 @@
                         <div class="p-4 text-red-400 text-sm">
                             <p class="font-bold text-base mb-1">¡Error de carga de datos!</p>
                             <p>No se encontró el archivo <code class="bg-slate-900 px-1.5 py-0.5 rounded text-rose-300 font-mono">data.csv</code>.</p>
-                            <p class="text-xs text-slate-500 mt-3">Asegúrate de renombrar tu archivo CSV como <strong>data.csv</strong> y colocarlo exactamente en la misma carpeta que este index.html en tu repositorio de GitHub.</p>
+                            <p class="text-xs text-slate-500 mt-3">Asegúrate de que tu archivo se llame exactamente <strong>data.csv</strong> y esté en la misma carpeta.</p>
                         </div>`;
-                    console.error("Error cargando CSV:", err);
                 }
             });
 
-            // Close suggestions dropdown when clicking outside
+            // Cerrar menú de sugerencias al hacer clic afuera
             document.addEventListener('click', function(event) {
                 const searchContainer = document.getElementById('search-container');
                 const dropdown = document.getElementById('suggestions-dropdown');
@@ -309,12 +282,12 @@
             });
         });
 
-        // Helper to normalize strings for flexible matching (removes accents, leading quotes, lowers case)
+        // Normalizar texto (quitar tildes, comillas y mayúsculas)
         function normalizeString(str) {
             if (!str) return '';
             return str.toString()
                 .replace(/'/g, '')
-                .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Remove accents
+                .normalize("NFD").replace(/[\u0300-\u036f]/g, "") 
                 .toLowerCase()
                 .trim();
         }
@@ -348,7 +321,7 @@
             resultsEl.classList.add('hidden');
         }
 
-        // Live Search Handling (Dropdown)
+        // Búsqueda en tiempo real
         function handleInput() {
             const inputVal = document.getElementById('search-input').value;
             const normalizedInput = normalizeString(inputVal);
@@ -368,7 +341,7 @@
                 return codCatastral.includes(normalizedInput) || 
                        direccion.includes(normalizedInput) || 
                        folio.includes(normalizedInput);
-            }).slice(0, 10); // Limit to 10 suggestions
+            }).slice(0, 10); // Mostrar máximo 10 opciones
 
             if (currentSuggestions.length > 0) {
                 renderSuggestions();
@@ -378,6 +351,7 @@
             }
         }
 
+        // Dibujar opciones en el menú
         function renderSuggestions() {
             const dropdown = document.getElementById('suggestions-dropdown');
             dropdown.innerHTML = '';
@@ -412,8 +386,6 @@
             const predio = currentSuggestions[index];
             document.getElementById('search-input').value = (predio['Direccion del predio'] || '').trim();
             document.getElementById('suggestions-dropdown').classList.add('hidden');
-            
-            // Clear error if any
             document.getElementById('error-message').classList.add('hidden');
             
             displayResult(predio);
@@ -445,10 +417,10 @@
             dropdown.classList.add('hidden');
         }
 
+        // Mostrar resultados en el Dashboard
         function displayResult(predio) {
             const resultsEl = document.getElementById('results-section');
             
-            // Extract numeric values safely
             const impuestoActual = parseFloat(predio['Impuesto actual']) || 0;
             const impuestoAnterior = parseFloat(predio['Impuesto anterior']) || 0;
             const diferenciaImpuesto = parseFloat(predio['Diferencia impuesto anterior - impuesto actual']) || (impuestoActual - impuestoAnterior);
@@ -458,18 +430,18 @@
             const avaluoAnterior = parseFloat(predio['Avaluo anterior']) || 0;
             
             const metrosTerrenoActual = predio['Metros del terreno actual'] || '0';
-            const metrosTerrenoAnterior = predio['Metros terreno anterior'] || '0';
             const metrosConstruccionActual = predio['Construccion actual'] || '0';
-            const metrosConstruccionAnterior = predio['Construccion anterior'] || predio['Metros construccion anterior'] || '0'; // Busca varias posibles opciones en el nombre de columna
+            
+            // EXTRACCIÓN CON LOS NOMBRES EXACTOS DE LA BASE DE DATOS
+            const metrosTerrenoAnterior = predio['Metros del terreno anterior'] || '0';
+            const metrosConstruccionAnterior = predio['Contruccion anterior'] || '0'; 
 
-            // Inject core KPIs
             document.getElementById('kpi-impuesto-actual').innerText = formatCurrency(impuestoActual);
             document.getElementById('kpi-impuesto-anterior').innerText = formatCurrency(impuestoAnterior);
             document.getElementById('kpi-diferencia-pesos').innerText = formatCurrency(diferenciaImpuesto);
             document.getElementById('kpi-vigencia').innerText = predio['Vigencia actual'] || '2026';
             document.getElementById('kpi-variacion-pct').innerText = formatPercent(varPctImpuesto);
 
-            // Handle alert levels/colors
             const cardVariacion = document.getElementById('kpi-variacion-card');
             const textAlerta = document.getElementById('kpi-alerta-texto');
             const iconContainer = document.getElementById('kpi-variacion-icon-container');
@@ -492,30 +464,25 @@
                 iconContainer.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>`;
             }
 
-            // Inject owner and general data
             document.getElementById('data-nombre').innerText = predio['Nombre'] || 'No Registrado';
             document.getElementById('data-nit').innerText = predio['Nit'] || 'No Disponible';
             document.getElementById('data-direccion').innerText = predio['Direccion del predio'] || 'No Disponible';
             document.getElementById('data-barrio').innerText = predio['Barrio'] || 'No Especificado';
             document.getElementById('data-folio').innerText = predio['FOLIO MATRICULA'] || 'No Registrado';
 
-            // Inject technical data
             document.getElementById('data-codigo').innerText = (predio['Codigo catastral'] || '').replace(/'/g, '');
             document.getElementById('data-destino').innerText = predio['Destino economico actual'] || '-';
             document.getElementById('data-avaluo-actual').innerText = formatCurrency(avaluoActual);
             document.getElementById('data-avaluo-anterior').innerText = formatCurrency(avaluoAnterior);
             
-            // Terrain Area Handling
             document.getElementById('data-areas-terreno-actual').innerText = `${metrosTerrenoActual} m²`;
             document.getElementById('data-areas-terreno-anterior').innerText = `${metrosTerrenoAnterior} m²`;
             
-            // Construction Area Handling (NEW)
             document.getElementById('data-areas-const-actual').innerText = `${metrosConstruccionActual} m²`;
             document.getElementById('data-areas-const-anterior').innerText = `${metrosConstruccionAnterior} m²`;
             
             document.getElementById('data-estrato').innerText = predio['Estrato'] || 'No reportado';
 
-            // Reveal animations
             resultsEl.classList.remove('hidden');
         }
     </script>
