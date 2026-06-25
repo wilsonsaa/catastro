@@ -64,7 +64,7 @@
                 Consulta tu Predio de Forma Instantánea
             </h2>
             <p class="text-slate-400 text-sm sm:text-base">
-                Ingresa el código catastral, número de matrícula o dirección del inmueble para conocer la variación del avalúo y el valor total del impuesto a pagar para la vigencia actual.
+                Ingresa el código catastral, número de matrícula, NIT/Cédula o dirección del inmueble para conocer la variación del avalúo y el valor total del impuesto a pagar para la vigencia actual.
             </p>
         </div>
 
@@ -84,7 +84,7 @@
                     </div>
                     <input type="text" id="search-input" 
                         class="w-full pl-10 pr-4 py-3 bg-transparent text-white placeholder-slate-500 focus:outline-none text-sm rounded-xl" 
-                        placeholder="Ej: Código, Matrícula o Dirección (ej: CR 3)..."
+                        placeholder="Ej: Código, Matrícula, NIT o Dirección (ej: CR 3)..."
                         autocomplete="off"
                         oninput="handleInput()"
                         onkeypress="if(event.key === 'Enter') selectFirstSuggestionOrSearch()">
@@ -321,7 +321,7 @@
             resultsEl.classList.add('hidden');
         }
 
-        // Búsqueda en tiempo real
+        // Búsqueda en tiempo real (Autocompletar)
         function handleInput() {
             const inputVal = document.getElementById('search-input').value;
             const normalizedInput = normalizeString(inputVal);
@@ -337,10 +337,12 @@
                 const codCatastral = normalizeString(row['Codigo catastral']);
                 const direccion = normalizeString(row['Direccion del predio']);
                 const folio = normalizeString(row['FOLIO MATRICULA']);
+                const nit = normalizeString(row['Nit']); // NUEVA INCLUSIÓN: NIT / Documento
                 
                 return codCatastral.includes(normalizedInput) || 
                        direccion.includes(normalizedInput) || 
-                       folio.includes(normalizedInput);
+                       folio.includes(normalizedInput) ||
+                       nit.includes(normalizedInput);
             }).slice(0, 10); // Mostrar máximo 10 opciones
 
             if (currentSuggestions.length > 0) {
@@ -351,7 +353,7 @@
             }
         }
 
-        // Dibujar opciones en el menú
+        // Dibujar opciones en el menú desplegable
         function renderSuggestions() {
             const dropdown = document.getElementById('suggestions-dropdown');
             dropdown.innerHTML = '';
@@ -361,6 +363,7 @@
                 const dir = predio['Direccion del predio'] || 'Sin dirección';
                 const folio = predio['FOLIO MATRICULA'] || 'Sin matrícula';
                 const propietario = predio['Nombre'] || 'Sin nombre';
+                const nitDoc = predio['Nit'] || 'Sin documento'; // NUEVA INCLUSIÓN EN VISTA DE SUGERENCIAS
 
                 const item = document.createElement('div');
                 item.className = 'p-3 hover:bg-slate-700 cursor-pointer border-b border-slate-700/50 last:border-0 transition-colors';
@@ -371,6 +374,7 @@
                         <div class="flex-grow">
                             <p class="text-sm text-white font-medium truncate">${dir}</p>
                             <p class="text-xs text-slate-400 mt-0.5 truncate"><span class="text-slate-500">Propietario:</span> ${propietario}</p>
+                            <p class="text-[11px] text-slate-400"><span class="text-slate-500">NIT/CC:</span> ${nitDoc}</p>
                         </div>
                         <div class="text-right ml-2 shrink-0">
                             <p class="text-xs text-blue-400 font-mono">${cod}</p>
@@ -402,7 +406,8 @@
                  const match = database.find(row => {
                     return normalizeString(row['Codigo catastral']).includes(normalizedInput) || 
                            normalizeString(row['Direccion del predio']).includes(normalizedInput) || 
-                           normalizeString(row['FOLIO MATRICULA']).includes(normalizedInput);
+                           normalizeString(row['FOLIO MATRICULA']).includes(normalizedInput) ||
+                           normalizeString(row['Nit']).includes(normalizedInput); // BÚSQUEDA DIRECTA POR NIT
                 });
 
                 if (match) {
@@ -432,7 +437,6 @@
             const metrosTerrenoActual = predio['Metros del terreno actual'] || '0';
             const metrosConstruccionActual = predio['Construccion actual'] || '0';
             
-            // EXTRACCIÓN CON LOS NOMBRES EXACTOS DE LA BASE DE DATOS
             const metrosTerrenoAnterior = predio['Metros del terreno anterior'] || '0';
             const metrosConstruccionAnterior = predio['Contruccion anterior'] || '0'; 
 
