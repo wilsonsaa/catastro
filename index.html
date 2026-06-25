@@ -223,6 +223,8 @@
                             <span class="text-slate-400">Avalúo Anterior:</span>
                             <span id="data-avaluo-anterior" class="font-medium text-slate-300">$0</span>
                         </div>
+                        
+                        <!-- Áreas de Terreno -->
                         <div class="flex flex-col border-b border-slate-800/50 pb-2">
                             <div class="flex justify-between">
                                 <span class="text-slate-400">Área Terreno Actual:</span>
@@ -233,10 +235,19 @@
                                 <span id="data-areas-terreno-anterior" class="font-medium text-slate-400 text-xs">0 m²</span>
                             </div>
                         </div>
-                        <div class="flex justify-between border-b border-slate-800/50 pb-2">
-                            <span class="text-slate-400">Área Construcción:</span>
-                            <span id="data-areas-const" class="font-medium text-slate-200">0 m²</span>
+                        
+                        <!-- Áreas de Construcción -->
+                        <div class="flex flex-col border-b border-slate-800/50 pb-2">
+                            <div class="flex justify-between">
+                                <span class="text-slate-400">Área Construcción Actual:</span>
+                                <span id="data-areas-const-actual" class="font-medium text-slate-200">0 m²</span>
+                            </div>
+                            <div class="flex justify-between mt-1">
+                                <span class="text-slate-500 text-xs">Área Const. Anterior:</span>
+                                <span id="data-areas-const-anterior" class="font-medium text-slate-400 text-xs">0 m²</span>
+                            </div>
                         </div>
+
                         <div class="flex justify-between">
                             <span class="text-slate-400">Estrato:</span>
                             <span id="data-estrato" class="font-medium text-slate-200">-</span>
@@ -349,9 +360,6 @@
                 return;
             }
 
-            // Split input into words for more flexible matching (e.g., "cr 3" matches "CRA 3", etc. if we want, but simple include is often better for addresses)
-            // We will do a simple includes, but on the normalized string
-            
             currentSuggestions = database.filter(row => {
                 const codCatastral = normalizeString(row['Codigo catastral']);
                 const direccion = normalizeString(row['Direccion del predio']);
@@ -416,10 +424,8 @@
             const inputVal = document.getElementById('search-input').value;
             
             if (currentSuggestions.length > 0 && !dropdown.classList.contains('hidden')) {
-                // User pressed enter or search button while suggestions were visible
                 selectSuggestion(0);
             } else if (inputVal.trim() !== '') {
-                // Fallback to strict search if they just typed and hit enter fast
                  const normalizedInput = normalizeString(inputVal);
                  const match = database.find(row => {
                     return normalizeString(row['Codigo catastral']).includes(normalizedInput) || 
@@ -452,8 +458,9 @@
             const avaluoAnterior = parseFloat(predio['Avaluo anterior']) || 0;
             
             const metrosTerrenoActual = predio['Metros del terreno actual'] || '0';
-            const metrosTerrenoAnterior = predio['Metros terreno anterior'] || '0'; // Added previous terrain
-            const metrosConstruccion = predio['Construccion actual'] || '0';
+            const metrosTerrenoAnterior = predio['Metros terreno anterior'] || '0';
+            const metrosConstruccionActual = predio['Construccion actual'] || '0';
+            const metrosConstruccionAnterior = predio['Construccion anterior'] || predio['Metros construccion anterior'] || '0'; // Busca varias posibles opciones en el nombre de columna
 
             // Inject core KPIs
             document.getElementById('kpi-impuesto-actual').innerText = formatCurrency(impuestoActual);
@@ -462,7 +469,7 @@
             document.getElementById('kpi-vigencia').innerText = predio['Vigencia actual'] || '2026';
             document.getElementById('kpi-variacion-pct').innerText = formatPercent(varPctImpuesto);
 
-            // Handle alert levels/colors based on double tax criteria or variation thresholds
+            // Handle alert levels/colors
             const cardVariacion = document.getElementById('kpi-variacion-card');
             const textAlerta = document.getElementById('kpi-alerta-texto');
             const iconContainer = document.getElementById('kpi-variacion-icon-container');
@@ -498,10 +505,13 @@
             document.getElementById('data-avaluo-actual').innerText = formatCurrency(avaluoActual);
             document.getElementById('data-avaluo-anterior').innerText = formatCurrency(avaluoAnterior);
             
-            // New Terrain Area Handling
+            // Terrain Area Handling
             document.getElementById('data-areas-terreno-actual').innerText = `${metrosTerrenoActual} m²`;
             document.getElementById('data-areas-terreno-anterior').innerText = `${metrosTerrenoAnterior} m²`;
-            document.getElementById('data-areas-const').innerText = `${metrosConstruccion} m²`;
+            
+            // Construction Area Handling (NEW)
+            document.getElementById('data-areas-const-actual').innerText = `${metrosConstruccionActual} m²`;
+            document.getElementById('data-areas-const-anterior').innerText = `${metrosConstruccionAnterior} m²`;
             
             document.getElementById('data-estrato').innerText = predio['Estrato'] || 'No reportado';
 
