@@ -73,7 +73,7 @@
                 Consulta tu Predio de Forma Instantánea
             </h2>
             <p class="text-gray-600 text-sm sm:text-base">
-                Ingresa el código catastral, número de matrícula, NIT/Cédula, nombre o dirección del inmueble para conocer la variación del avalúo y el valor total del impuesto a pagar.
+                Ingresa el nombre, número de matrícula, NIT/Cédula, código catastral o dirección del inmueble para conocer la variación del avalúo y el valor total del impuesto a pagar.
             </p>
         </div>
 
@@ -93,7 +93,7 @@
                     </div>
                     <input type="text" id="search-input" 
                         class="w-full pl-10 pr-4 py-3 bg-transparent text-gray-800 placeholder-gray-400 focus:outline-none text-sm rounded-xl focus:bg-gray-50 transition-colors" 
-                        placeholder="Ej: Código, Matrícula, Nombre, NIT o Dirección..."
+                        placeholder="Ej: Nombre, NIT, Código, Matrícula o Dirección..."
                         autocomplete="off"
                         oninput="handleInput()"
                         onkeypress="if(event.key === 'Enter') selectFirstSuggestionOrSearch()">
@@ -304,14 +304,20 @@
                 download: true,
                 header: true,
                 skipEmptyLines: true,
+                // IMPORTANTE: Limpia los nombres de las columnas para evitar errores de espacios en Excel
+                transformHeader: function(h) {
+                    return h.trim();
+                },
                 complete: function(results) {
                     database = results.data;
                     
-                    // Al terminar, intentar cargar base de pendientes
                     Papa.parse('pendientes.csv', {
                         download: true,
                         header: true,
                         skipEmptyLines: true,
+                        transformHeader: function(h) {
+                            return h.trim();
+                        },
                         complete: function(resPendientes) {
                             pendientesData = resPendientes.data;
                             finalizarCarga();
@@ -345,12 +351,12 @@
             });
         });
 
-        // FUNCION CORREGIDA PARA LIMPIAR TEXTO Y TILDES CORRECTAMENTE
+        // Limpieza robusta de texto
         function normalizeString(str) {
             if (!str) return '';
             return str.toString()
                 .replace(/'/g, '')
-                .normalize("NFD").replace(/[\u0300-\u036f]/g, "") 
+                .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Limpia tildes y acentos
                 .toLowerCase()
                 .trim();
         }
@@ -384,16 +390,18 @@
             resultsEl.classList.add('hidden');
         }
 
-        // BUSCADOR MEJORADO (Multi-palabra, filtra en todas las columnas clave a la vez)
+        // BUSCADOR MEJORADO Y FLEXIBLE
         function getSearchableText(row) {
-            const codCatastral = normalizeString(row['Codigo catastral']);
-            const codAcm = normalizeString(row['COD_ACM']);
-            const direccion = normalizeString(row['Direccion del predio']);
-            const folio = normalizeString(row['FOLIO MATRICULA']);
-            const nit = normalizeString(row['Nit']);
-            const nombre = normalizeString(row['Nombre']);
+            // Recolecta exactamente las columnas de tu imagen para que sean todas filtrables
+            const codCatastral = normalizeString(row['Codigo catastral'] || '');
+            const codAcm = normalizeString(row['COD_ACM'] || '');
+            const codAnterior = normalizeString(row['Codigo anterior'] || '');
+            const nit = normalizeString(row['Nit'] || '');
+            const nombre = normalizeString(row['Nombre'] || '');
+            const direccion = normalizeString(row['Direccion del predio'] || '');
+            const folio = normalizeString(row['FOLIO MATRICULA'] || '');
             
-            return `${codCatastral} ${codAcm} ${direccion} ${folio} ${nit} ${nombre}`;
+            return `${codCatastral} ${codAcm} ${codAnterior} ${nit} ${nombre} ${direccion} ${folio}`;
         }
 
         function handleInput() {
@@ -407,12 +415,12 @@
                 return;
             }
 
-            // Separa lo que escribe el usuario por espacios (ej: "CR 3" -> ["cr", "3"])
+            // Permite busquedas multi-palabra (Ej: "Juan 119")
             const searchTerms = normalizedInput.split(' ').filter(t => t.trim() !== '');
 
             currentSuggestions = database.filter(row => {
                 const searchableText = getSearchableText(row);
-                // Verifica que TODOS los terminos de busqueda esten en el texto del predio
+                // Si todas las partes buscadas están en el texto del predio, se muestra
                 return searchTerms.every(term => searchableText.includes(term));
             }).slice(0, 10); 
 
