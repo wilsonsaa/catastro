@@ -304,21 +304,20 @@
                 download: true,
                 header: true,
                 skipEmptyLines: true,
-                // SOLUCIÓN: Interceptar el archivo y eliminar la fila de CONSULTA/VISOR
                 beforeFirstChunk: function(chunk) {
                     let lines = chunk.split(/\r\n|\n/);
-                    // Si la primera fila contiene 'CONSULTA' o 'VISOR', la sacamos del arreglo
                     if (lines[0] && (lines[0].includes('CONSULTA') || lines[0].includes('VISOR'))) {
-                        lines.shift(); 
+                        lines.shift(); // Elimina la fila de metadatos para tomar los nombres reales
                     }
                     return lines.join('\n');
                 },
                 transformHeader: function(h) {
-                    return h.trim(); // Limpiamos espacios extra en los nombres de la fila 2
+                    return h.trim();
                 },
                 complete: function(results) {
                     database = results.data;
                     
+                    // Cargar base de pendientes
                     Papa.parse('pendientes.csv', {
                         download: true,
                         header: true,
@@ -331,7 +330,7 @@
                             finalizarCarga();
                         },
                         error: function() {
-                            console.warn("No se encontró archivo pendientes.csv, funcionando solo con data.csv");
+                            console.warn("No se encontró archivo pendientes.csv");
                             finalizarCarga();
                         }
                     });
@@ -359,12 +358,12 @@
             });
         });
 
-        // Limpieza robusta de texto
+        // Limpieza de texto para el buscador
         function normalizeString(str) {
             if (!str) return '';
             return str.toString()
                 .replace(/'/g, '')
-                .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Limpia tildes y acentos
+                .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
                 .toLowerCase()
                 .trim();
         }
@@ -398,20 +397,17 @@
             resultsEl.classList.add('hidden');
         }
 
-        // FUNCIÓN ESTABLE DE BÚSQUEDA CON COLUMNAS "CONSULTA"
-        // Extrae estrictamente las 7 columnas habilitadas en el encabezado
-        function getSearchableText(row) {
-            const codAcm = normalizeString(row['COD_ACM']);
-            const codCatastral = normalizeString(row['Codigo catastral']);
-            const codAnterior = normalizeString(row['Codigo anterior']);
-            const nit = normalizeString(row['Nit']);
-            const nombre = normalizeString(row['Nombre']);
-            const direccion = normalizeString(row['Direccion del predio']);
-            const folio = normalizeString(row['FOLIO MATRICULA']);
-            
-            return `${codAcm} ${codCatastral} ${codAnterior} ${nit} ${nombre} ${direccion} ${folio}`;
+        // Recuperar texto buscable de data.csv (CONSULTA)
+        function getSearchableTextData(row) {
+            return normalizeString(`${row['COD_ACM']} ${row['Codigo catastral']} ${row['Codigo anterior']} ${row['Nit']} ${row['Nombre']} ${row['Direccion del predio']} ${row['FOLIO MATRICULA']}`);
         }
 
+        // Recuperar texto buscable de pendientes.csv
+        function getSearchableTextPendientes(row) {
+            return normalizeString(`${row['COD_ACM']} ${row['NoPredial']} ${row['Nombre']} ${row['Direccion']} ${row['MatriculaInmobiliaria_ACM']}`);
+        }
+
+        // LÓGICA DE SUGERENCIAS EN TIEMPO REAL
         function handleInput() {
             const inputVal = document.getElementById('search-input').value;
             const normalizedInput = normalizeString(inputVal);
@@ -423,14 +419,33 @@
                 return;
             }
 
-            // Mantiene la estabilidad del filtro antiguo pero permite buscar "Nombre + Número" 
             const searchTerms = normalizedInput.split(' ').filter(t => t.trim() !== '');
 
-            currentSuggestions = database.filter(row => {
-                const searchableText = getSearchableText(row);
-                // Verifica que todos los términos escritos estén en los campos de "CONSULTA"
-                return searchTerms.every(term => searchableText.includes(term));
-            }).slice(0, 10); 
+            // Buscar en data.csv
+            let matchesData = database.filter(row => {
+                const text = getSearchableTextData(row);
+                return searchTerms.every(term => text.includes(term));
+            }).map(row => ({ ...row, origen: 'data' }));
+
+            // Buscar en pendientes.csv
+            let matchesPendientes = pendientesData.filter(row => {
+                const text = getSearchableTextPendientes(row);
+                return searchTerms.every(term => text.includes(term));
+            }).map(row => ({ ...row, origen: 'pendiente' }));
+
+            // Unir y filtrar duplicados (priorizando data.csv)
+            const unificados = [];
+            const codigosVistos = new Set();
+            
+            for (const item of [...matchesData, ...matchesPendientes]) {
+                const codigoIdentificador = item['Codigo catastral'] || item['NoPredial'] || item['COD_ACM'];
+                if (!codigosVistos.has(codigoIdentificador)) {
+                    codigosVistos.add(codigoIdentificador);
+                    unificados.push(item);
+                }
+            }
+
+            currentSuggestions = unificados.slice(0, 10); 
 
             if (currentSuggestions.length > 0) {
                 renderSuggestions();
@@ -445,11 +460,12 @@
             dropdown.innerHTML = '';
 
             currentSuggestions.forEach((predio, index) => {
-                const cod = (predio['Codigo catastral'] || predio['COD_ACM'] || '').replace(/'/g, '');
-                const dir = predio['Direccion del predio'] || 'Sin dirección';
-                const folio = predio['FOLIO MATRICULA'] || 'Sin matrícula';
+                const cod = (predio['Codigo catastral'] || predio['NoPredial'] || predio['COD_ACM'] || '').replace(/'/g, '');
+                const dir = predio['Direccion del predio'] || predio['Direccion'] || 'Sin dirección';
+                const folio = predio['FOLIO MATRICULA'] || predio['MatriculaInmobiliaria_ACM'] || 'Sin matrícula';
                 const propietario = predio['Nombre'] || 'Sin nombre';
                 const nitDoc = predio['Nit'] || 'Sin documento';
+                const badge = predio.origen === 'pendiente' ? '<span class="bg-red-100 text-red-600 px-1.5 py-0.5 rounded text-[9px] font-bold ml-2">PENDIENTE</span>' : '';
 
                 const item = document.createElement('div');
                 item.className = 'p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0 transition-colors';
@@ -458,7 +474,7 @@
                 item.innerHTML = `
                     <div class="flex justify-between items-start">
                         <div class="flex-grow">
-                            <p class="text-sm text-gray-800 font-medium truncate">${dir}</p>
+                            <p class="text-sm text-gray-800 font-medium truncate">${dir} ${badge}</p>
                             <p class="text-xs text-gray-500 mt-0.5 truncate"><span class="text-gray-400">Propietario:</span> ${propietario}</p>
                             <p class="text-[11px] text-gray-500"><span class="text-gray-400">NIT/CC:</span> ${nitDoc}</p>
                         </div>
@@ -474,7 +490,7 @@
 
         function selectSuggestion(index) {
             const predio = currentSuggestions[index];
-            document.getElementById('search-input').value = (predio['Direccion del predio'] || '').trim();
+            document.getElementById('search-input').value = (predio['Direccion del predio'] || predio['Direccion'] || '').trim();
             document.getElementById('suggestions-dropdown').classList.add('hidden');
             document.getElementById('error-message').classList.add('hidden');
             
@@ -488,53 +504,68 @@
             if (currentSuggestions.length > 0 && !dropdown.classList.contains('hidden')) {
                 selectSuggestion(0);
             } else if (inputVal.trim() !== '') {
-                 const normalizedInput = normalizeString(inputVal);
-                 const searchTerms = normalizedInput.split(' ').filter(t => t.trim() !== '');
-
-                 const match = database.find(row => {
-                    const searchableText = getSearchableText(row);
-                    return searchTerms.every(term => searchableText.includes(term));
-                 });
-
-                if (match) {
+                 handleInput(); // Re-ejecuta la lógica de búsqueda
+                 if (currentSuggestions.length > 0) {
                      document.getElementById('error-message').classList.add('hidden');
-                     displayResult(match);
-                } else {
+                     displayResult(currentSuggestions[0]);
+                 } else {
                      showError("No se encontró ningún predio registrado con los datos ingresados.");
-                }
+                 }
             } else {
                  showError("Por favor, ingresa un criterio de búsqueda.");
             }
             dropdown.classList.add('hidden');
         }
 
+        // MOSTRAR TARJETAS Y DATOS (VISOR)
         function displayResult(predio) {
             const resultsEl = document.getElementById('results-section');
-            
-            // VERIFICAR RECIBOS PENDIENTES
             const alertaPendientes = document.getElementById('alerta-pendientes');
-            const codigoCatastral = (predio['Codigo catastral'] || '').toString().replace(/'/g, '').trim();
+            const h4Alerta = alertaPendientes.querySelector('h4');
+            const textoAlerta = document.getElementById('texto-pendientes');
+            
+            const codigoCatastral = (predio['Codigo catastral'] || predio['NoPredial'] || '').toString().replace(/'/g, '').trim();
             const codAcm = (predio['COD_ACM'] || '').toString().trim();
             
-            let pendienteMatch = null;
-            if (pendientesData && pendientesData.length > 0) {
-                pendienteMatch = pendientesData.find(row => {
-                    const noPredialPendiente = (row['NoPredial'] || '').toString().replace(/'/g, '').trim();
-                    const codAcmPendiente = (row['COD_ACM'] || '').toString().trim();
-                    return (noPredialPendiente === codigoCatastral && codigoCatastral !== '') || 
-                           (codAcmPendiente === codAcm && codAcm !== '');
+            let esSoloPendiente = predio.origen === 'pendiente';
+            let baseIgac = 0;
+
+            // Validación cruzada para extraer el Base IGAC si existe
+            if (!esSoloPendiente && pendientesData.length > 0) {
+                const match = pendientesData.find(row => {
+                    const pCat = (row['NoPredial'] || '').toString().replace(/'/g, '').trim();
+                    const pAcm = (row['COD_ACM'] || '').toString().trim();
+                    return (pCat === codigoCatastral && codigoCatastral !== '') || (pAcm === codAcm && codAcm !== '');
                 });
+                if (match) {
+                    baseIgac = parseFloat(match['Base Nueva IGAC 20260612']) || 0;
+                }
+            } else if (esSoloPendiente) {
+                baseIgac = parseFloat(predio['Base Nueva IGAC 20260612']) || 0;
             }
 
-            if (pendienteMatch) {
+            // Configurar el letrero de Alertas
+            if (esSoloPendiente) {
                 alertaPendientes.classList.remove('hidden');
-                const baseIgac = parseFloat(pendienteMatch['Base Nueva IGAC 20260612']) || 0;
+                alertaPendientes.className = "glass-card p-4 rounded-xl border-l-4 border-red-500 bg-red-50 flex items-center justify-between shadow-md";
+                h4Alerta.className = "font-bold text-red-700 text-sm";
+                h4Alerta.innerText = "RECIBO PENDIENTE POR GENERAR";
+                textoAlerta.className = "text-xs text-red-600 font-medium";
+                textoAlerta.innerText = "El cálculo de impuestos para este predio aún no se encuentra disponible.";
+                document.getElementById('valor-igac-pendiente').innerText = baseIgac ? formatCurrency(baseIgac) : "";
+            } else if (baseIgac > 0) {
+                alertaPendientes.classList.remove('hidden');
+                alertaPendientes.className = "glass-card p-4 rounded-xl border-l-4 border-[#FFD100] bg-yellow-50 flex items-center justify-between shadow-md";
+                h4Alerta.className = "font-bold text-yellow-800 text-sm";
+                h4Alerta.innerText = "Registro de Base IGAC Encontrado";
+                textoAlerta.className = "text-xs text-yellow-700 font-medium";
+                textoAlerta.innerText = "Información complementaria detectada en la base de recibos.";
                 document.getElementById('valor-igac-pendiente').innerText = formatCurrency(baseIgac);
             } else {
                 alertaPendientes.classList.add('hidden');
             }
 
-            // Datos KPI y Variación (Campos VISOR)
+            // Datos KPI y Variación (VISOR)
             const impuestoActual = parseFloat(predio['Impuesto actual']) || 0;
             const impuestoAnterior = parseFloat(predio['Impuesto anterior']) || 0;
             const diferenciaImpuesto = parseFloat(predio['Diferencia impuesto anterior - impuesto actual']) || (impuestoActual - impuestoAnterior);
@@ -545,15 +576,14 @@
             
             const metrosTerrenoActual = predio['Metros del terreno actual'] || '0';
             const metrosConstruccionActual = predio['Construccion actual'] || '0';
-            // Nota: Se respeta el error tipográfico "Contruccion anterior" que viene en el CSV original
             const metrosTerrenoAnterior = predio['Metros del terreno anterior'] || '0';
             const metrosConstruccionAnterior = predio['Contruccion anterior'] || '0'; 
 
-            document.getElementById('kpi-impuesto-actual').innerText = formatCurrency(impuestoActual);
-            document.getElementById('kpi-impuesto-anterior').innerText = formatCurrency(impuestoAnterior);
-            document.getElementById('kpi-diferencia-pesos').innerText = formatCurrency(diferenciaImpuesto);
-            document.getElementById('kpi-vigencia').innerText = predio['Vigencia actual'] || predio['Vigencia inicial del predio'] || '2026';
-            document.getElementById('kpi-variacion-pct').innerText = formatPercent(varPctImpuesto);
+            document.getElementById('kpi-impuesto-actual').innerText = esSoloPendiente ? '-' : formatCurrency(impuestoActual);
+            document.getElementById('kpi-impuesto-anterior').innerText = esSoloPendiente ? '-' : formatCurrency(impuestoAnterior);
+            document.getElementById('kpi-diferencia-pesos').innerText = esSoloPendiente ? '-' : formatCurrency(diferenciaImpuesto);
+            document.getElementById('kpi-vigencia').innerText = esSoloPendiente ? '-' : (predio['Vigencia actual'] || predio['Vigencia inicial del predio'] || '2026');
+            document.getElementById('kpi-variacion-pct').innerText = esSoloPendiente ? '-' : formatPercent(varPctImpuesto);
 
             const cardVariacion = document.getElementById('kpi-variacion-card');
             const textAlerta = document.getElementById('kpi-alerta-texto');
@@ -561,7 +591,13 @@
             
             const esMayorAlDoble = (predio['Mayor al doble?'] || '').toString().toUpperCase() === 'SI';
 
-            if (esMayorAlDoble || varPctImpuesto > 50) {
+            if (esSoloPendiente) {
+                cardVariacion.className = "glass-card p-6 rounded-2xl relative overflow-hidden border-l-4 border-gray-300";
+                textAlerta.innerText = "Sin Datos";
+                textAlerta.className = "font-semibold text-gray-400";
+                document.getElementById('kpi-variacion-pct').className = "text-3xl font-bold mt-2 text-gray-400";
+                iconContainer.className = "hidden";
+            } else if (esMayorAlDoble || varPctImpuesto > 50) {
                 cardVariacion.className = "glass-card p-6 rounded-2xl relative overflow-hidden border-l-4 border-red-500 bg-red-50/50";
                 textAlerta.innerText = "Alerta: Incremento Elevado";
                 textAlerta.className = "font-semibold text-red-600";
@@ -577,28 +613,24 @@
                 iconContainer.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>`;
             }
 
+            // Datos Técnicos e Información del Propietario
             document.getElementById('data-nombre').innerText = predio['Nombre'] || 'No Registrado';
             document.getElementById('data-nit').innerText = predio['Nit'] || 'No Disponible';
-            document.getElementById('data-direccion').innerText = predio['Direccion del predio'] || 'No Disponible';
+            document.getElementById('data-direccion').innerText = predio['Direccion del predio'] || predio['Direccion'] || 'No Disponible';
             
-            document.getElementById('data-barrio').innerText = predio['BARRIO/SECTOR'] || predio['Barrio'] || 'No Especificado';
-            document.getElementById('data-folio').innerText = predio['FOLIO MATRICULA'] || 'No Registrado';
-
-            // Muestra Codigo catastral, o si esta vacio, el COD_ACM
-            document.getElementById('data-codigo').innerText = (predio['Codigo catastral'] || predio['COD_ACM'] || '').replace(/'/g, '');
-            
+            document.getElementById('data-barrio').innerText = predio['BARRIO/SECTOR'] || predio['Barrio'] || '-';
+            document.getElementById('data-folio').innerText = predio['FOLIO MATRICULA'] || predio['MatriculaInmobiliaria_ACM'] || 'No Registrado';
+            document.getElementById('data-codigo').innerText = (predio['Codigo catastral'] || predio['NoPredial'] || predio['COD_ACM'] || '').replace(/'/g, '');
             document.getElementById('data-destino').innerText = predio['Destino economico'] || predio['Destino economico actual'] || '-';
             
-            document.getElementById('data-avaluo-actual').innerText = formatCurrency(avaluoActual);
-            document.getElementById('data-avaluo-anterior').innerText = formatCurrency(avaluoAnterior);
-            
-            document.getElementById('data-areas-terreno-actual').innerText = `${metrosTerrenoActual} m²`;
-            document.getElementById('data-areas-terreno-anterior').innerText = `${metrosTerrenoAnterior} m²`;
-            
-            document.getElementById('data-areas-const-actual').innerText = `${metrosConstruccionActual} m²`;
-            document.getElementById('data-areas-const-anterior').innerText = `${metrosConstruccionAnterior} m²`;
-            
-            document.getElementById('data-estrato').innerText = predio['Estrato'] || 'No reportado';
+            // Reemplazo visual de guiones en lugar de 0s si el predio está en pendiente
+            document.getElementById('data-avaluo-actual').innerText = esSoloPendiente ? '-' : formatCurrency(avaluoActual);
+            document.getElementById('data-avaluo-anterior').innerText = esSoloPendiente ? '-' : formatCurrency(avaluoAnterior);
+            document.getElementById('data-areas-terreno-actual').innerText = esSoloPendiente ? '-' : `${metrosTerrenoActual} m²`;
+            document.getElementById('data-areas-terreno-anterior').innerText = esSoloPendiente ? '-' : `${metrosTerrenoAnterior} m²`;
+            document.getElementById('data-areas-const-actual').innerText = esSoloPendiente ? '-' : `${metrosConstruccionActual} m²`;
+            document.getElementById('data-areas-const-anterior').innerText = esSoloPendiente ? '-' : `${metrosConstruccionAnterior} m²`;
+            document.getElementById('data-estrato').innerText = predio['Estrato'] || '-';
 
             resultsEl.classList.remove('hidden');
         }
