@@ -290,7 +290,7 @@
         </div>
     </footer>
 
-    <script>
+   <script>
         let database = [];
         let pendientesData = [];
         let currentSuggestions = [];
@@ -304,9 +304,17 @@
                 download: true,
                 header: true,
                 skipEmptyLines: true,
-                // IMPORTANTE: Limpia los nombres de las columnas para evitar errores de espacios en Excel
+                // SOLUCIÓN: Interceptar el archivo y eliminar la fila de CONSULTA/VISOR
+                beforeFirstChunk: function(chunk) {
+                    let lines = chunk.split(/\r\n|\n/);
+                    // Si la primera fila contiene 'CONSULTA' o 'VISOR', la sacamos del arreglo
+                    if (lines[0] && (lines[0].includes('CONSULTA') || lines[0].includes('VISOR'))) {
+                        lines.shift(); 
+                    }
+                    return lines.join('\n');
+                },
                 transformHeader: function(h) {
-                    return h.trim();
+                    return h.trim(); // Limpiamos espacios extra en los nombres de la fila 2
                 },
                 complete: function(results) {
                     database = results.data;
@@ -390,18 +398,18 @@
             resultsEl.classList.add('hidden');
         }
 
-        // BUSCADOR MEJORADO Y FLEXIBLE
+        // FUNCIÓN ESTABLE DE BÚSQUEDA CON COLUMNAS "CONSULTA"
+        // Extrae estrictamente las 7 columnas habilitadas en el encabezado
         function getSearchableText(row) {
-            // Recolecta exactamente las columnas de tu imagen para que sean todas filtrables
-            const codCatastral = normalizeString(row['Codigo catastral'] || '');
-            const codAcm = normalizeString(row['COD_ACM'] || '');
-            const codAnterior = normalizeString(row['Codigo anterior'] || '');
-            const nit = normalizeString(row['Nit'] || '');
-            const nombre = normalizeString(row['Nombre'] || '');
-            const direccion = normalizeString(row['Direccion del predio'] || '');
-            const folio = normalizeString(row['FOLIO MATRICULA'] || '');
+            const codAcm = normalizeString(row['COD_ACM']);
+            const codCatastral = normalizeString(row['Codigo catastral']);
+            const codAnterior = normalizeString(row['Codigo anterior']);
+            const nit = normalizeString(row['Nit']);
+            const nombre = normalizeString(row['Nombre']);
+            const direccion = normalizeString(row['Direccion del predio']);
+            const folio = normalizeString(row['FOLIO MATRICULA']);
             
-            return `${codCatastral} ${codAcm} ${codAnterior} ${nit} ${nombre} ${direccion} ${folio}`;
+            return `${codAcm} ${codCatastral} ${codAnterior} ${nit} ${nombre} ${direccion} ${folio}`;
         }
 
         function handleInput() {
@@ -415,12 +423,12 @@
                 return;
             }
 
-            // Permite busquedas multi-palabra (Ej: "Juan 119")
+            // Mantiene la estabilidad del filtro antiguo pero permite buscar "Nombre + Número" 
             const searchTerms = normalizedInput.split(' ').filter(t => t.trim() !== '');
 
             currentSuggestions = database.filter(row => {
                 const searchableText = getSearchableText(row);
-                // Si todas las partes buscadas están en el texto del predio, se muestra
+                // Verifica que todos los términos escritos estén en los campos de "CONSULTA"
                 return searchTerms.every(term => searchableText.includes(term));
             }).slice(0, 10); 
 
@@ -486,7 +494,7 @@
                  const match = database.find(row => {
                     const searchableText = getSearchableText(row);
                     return searchTerms.every(term => searchableText.includes(term));
-                });
+                 });
 
                 if (match) {
                      document.getElementById('error-message').classList.add('hidden');
@@ -526,7 +534,7 @@
                 alertaPendientes.classList.add('hidden');
             }
 
-            // Datos KPI y Variación
+            // Datos KPI y Variación (Campos VISOR)
             const impuestoActual = parseFloat(predio['Impuesto actual']) || 0;
             const impuestoAnterior = parseFloat(predio['Impuesto anterior']) || 0;
             const diferenciaImpuesto = parseFloat(predio['Diferencia impuesto anterior - impuesto actual']) || (impuestoActual - impuestoAnterior);
@@ -537,6 +545,7 @@
             
             const metrosTerrenoActual = predio['Metros del terreno actual'] || '0';
             const metrosConstruccionActual = predio['Construccion actual'] || '0';
+            // Nota: Se respeta el error tipográfico "Contruccion anterior" que viene en el CSV original
             const metrosTerrenoAnterior = predio['Metros del terreno anterior'] || '0';
             const metrosConstruccionAnterior = predio['Contruccion anterior'] || '0'; 
 
