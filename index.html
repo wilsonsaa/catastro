@@ -4,63 +4,43 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Portal de Consulta Catastral</title>
+    
+    <link rel="icon" type="image/png" href="logo.png">
+    
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        
-        /* Paleta de colores de la Alcaldía */
-        :root {
-            --alcaldia-verde-oscuro: #006039;
-            --alcaldia-verde-claro: #00994C;
-            --alcaldia-amarillo: #FFD100;
-        }
-
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f8fafc; 
-            color: #1e293b;
+            background-color: #0f172a;
+            color: #f8fafc;
         }
-
-        /* Estilo general de tarjetas */
         .glass-card {
-            background: #ffffff;
-            border: 1px solid rgba(0, 96, 57, 0.15); 
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            transition: all 0.3s ease;
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
         }
-        .glass-card:hover {
-            box-shadow: 0 10px 15px -3px rgba(0, 153, 76, 0.2), 0 4px 6px -2px rgba(0, 153, 76, 0.1); 
-            border-color: rgba(0, 153, 76, 0.3);
-        }
-
-        /* Scroll */
+        /* Personalización del scroll para las sugerencias */
         #suggestions-dropdown::-webkit-scrollbar { width: 8px; }
-        #suggestions-dropdown::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 8px; }
-        #suggestions-dropdown::-webkit-scrollbar-thumb { background: var(--alcaldia-verde-claro); border-radius: 8px; } 
-        #suggestions-dropdown::-webkit-scrollbar-thumb:hover { background: var(--alcaldia-verde-oscuro); }
-
-        /* Footer */
-        .font-futura { font-family: 'Inter', sans-serif; } 
-        .font-tommy { font-weight: 700; }
-        .text-vivienda-yellow { color: var(--alcaldia-amarillo); }
-        .bg-alcaldia-footer { background-color: var(--alcaldia-verde-oscuro); }
-        .border-alcaldia-top { border-top-color: var(--alcaldia-amarillo); border-top-width: 8px; border-top-style: solid; }
+        #suggestions-dropdown::-webkit-scrollbar-track { background: #1e293b; border-radius: 8px; }
+        #suggestions-dropdown::-webkit-scrollbar-thumb { background: #475569; border-radius: 8px; }
+        #suggestions-dropdown::-webkit-scrollbar-thumb:hover { background: #64748b; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col justify-between antialiased">
 
-    <header class="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+    <header class="border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-50">
         <div class="max-w-6xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
             <div class="flex items-center space-x-3">
-                <img src="logo-alcaldia.png" alt="Escudo Alcaldía de Mosquera" class="h-12 w-auto object-contain" onerror="this.style.display='none';" />
+                <img src="logo.png" alt="Logo Institucional" class="h-12 w-auto object-contain drop-shadow-md" onerror="this.style.display='none';" />
                 <div>
-                    <h1 class="text-xl font-bold tracking-tight text-[#006039]">Consulta Catastral</h1>
-                    <p class="text-xs font-semibold text-gray-500">Secretaría de Hacienda - Mosquera</p>
+                    <h1 class="text-xl font-bold tracking-tight text-white">Consulta Catastral</h1>
+                    <p class="text-xs text-slate-400">Plataforma Pública de Consulta de Impuestos</p>
                 </div>
             </div>
-            <div class="flex items-center gap-2 text-xs bg-gray-50 px-3 py-1.5 rounded-full border border-gray-200 text-gray-600">
-                <span class="w-2 h-2 rounded-full bg-[#00994C] animate-pulse"></span>
+            <div class="flex items-center gap-2 text-xs bg-slate-800/80 px-3 py-1.5 rounded-full border border-slate-700/50 text-slate-300">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                 Bases de Datos Cargadas
             </div>
         </div>
@@ -69,100 +49,96 @@
     <main class="flex-grow max-w-6xl w-full mx-auto px-4 py-8">
         
         <div class="text-center max-w-2xl mx-auto mb-10">
-            <h2 class="text-3xl sm:text-4xl font-extrabold text-[#006039] mb-4">
+            <h2 class="text-3xl sm:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400 mb-4">
                 Consulta tu Predio de Forma Instantánea
             </h2>
-            <p class="text-gray-600 text-sm sm:text-base">
-                Ingresa el nombre, número de matrícula, NIT/Cédula, código catastral o dirección del inmueble para conocer la variación del avalúo y el valor total del impuesto a pagar.
+            <p class="text-slate-400 text-sm sm:text-base">
+                Ingresa el código catastral, número de matrícula, NIT/Cédula o dirección del inmueble para conocer la variación del avalúo y el valor total del impuesto a pagar.
             </p>
         </div>
 
-        <div id="loading-state" class="text-center py-12 glass-card rounded-2xl max-w-md mx-auto shadow-md">
-            <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-[#00994C] border-t-transparent mb-4"></div>
-            <p class="text-[#006039] font-medium">Sincronizando bases de datos...</p>
-            <p class="text-xs text-gray-500 mt-2">Cargando base catastral y recibos pendientes.</p>
+        <div id="loading-state" class="text-center py-12 glass-card rounded-2xl max-w-md mx-auto shadow-xl">
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent mb-4"></div>
+            <p class="text-slate-300 font-medium">Sincronizando bases de datos...</p>
+            <p class="text-xs text-slate-500 mt-2">Cargando base catastral y recibos pendientes.</p>
         </div>
 
         <div id="search-container" class="hidden max-w-2xl mx-auto mb-12 relative">
-            <div class="flex flex-col sm:flex-row gap-2 bg-white p-2 rounded-2xl border border-gray-200 shadow-lg relative z-20">
+            <div class="flex flex-col sm:flex-row gap-2 bg-slate-900/90 p-2 rounded-2xl border border-slate-800 shadow-2xl relative z-20">
                 <div class="relative flex-grow">
-                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                        </svg>
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                     </div>
                     <input type="text" id="search-input" 
-                        class="w-full pl-10 pr-4 py-3 bg-transparent text-gray-800 placeholder-gray-400 focus:outline-none text-sm rounded-xl focus:bg-gray-50 transition-colors" 
-                        placeholder="Ej: Nombre, NIT, Código, Matrícula o Dirección..."
+                        class="w-full pl-10 pr-4 py-3 bg-transparent text-white placeholder-slate-500 focus:outline-none text-sm rounded-xl" 
+                        placeholder="Ej: Código, Matrícula, NIT/Cédula o Dirección..."
                         autocomplete="off"
                         oninput="handleInput()"
                         onkeypress="if(event.key === 'Enter') selectFirstSuggestionOrSearch()">
                 </div>
                 <button onclick="selectFirstSuggestionOrSearch()" 
-                    class="bg-[#00994C] hover:bg-[#007b3d] text-white font-semibold text-sm px-6 py-3 rounded-xl transition duration-300 shadow-md active:scale-95 cursor-pointer">
+                    class="bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm px-6 py-3 rounded-xl transition duration-200 shadow-lg shadow-blue-500/20 active:scale-98 cursor-pointer">
                     Buscar
                 </button>
             </div>
             
-            <div id="suggestions-dropdown" class="hidden absolute top-full left-0 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-xl z-10 max-h-60 overflow-y-auto">
+            <div id="suggestions-dropdown" class="hidden absolute top-full left-0 w-full mt-2 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl z-10 max-h-60 overflow-y-auto">
             </div>
             
-            <div id="error-message" class="hidden mt-4 p-4 bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl flex items-center gap-2">
-                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                </svg>
+            <div id="error-message" class="hidden mt-4 p-4 bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-xl flex items-center gap-2">
+                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
                 <span id="error-text">No se encontró ningún predio con los datos ingresados.</span>
             </div>
         </div>
 
         <div id="results-section" class="hidden space-y-6 animate-fade-in">
             
-            <div id="alerta-pendientes" class="hidden glass-card p-4 rounded-xl border-l-4 border-[#FFD100] bg-yellow-50 flex items-center justify-between shadow-md">
+            <div id="alerta-pendientes" class="hidden glass-card p-4 rounded-xl shadow-md">
                 <div class="flex items-center gap-3">
-                    <div class="bg-yellow-100 text-yellow-700 p-2 rounded-full">
+                    <div class="bg-current/10 text-current p-2 rounded-full opacity-80">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
                     </div>
                     <div>
-                        <h4 class="font-bold text-yellow-800 text-sm">Registro de Base IGAC Encontrado</h4>
-                        <p id="texto-pendientes" class="text-xs text-yellow-700 font-medium">Información complementaria detectada en la base de recibos.</p>
+                        <h4>Título de Alerta</h4>
+                        <p id="texto-pendientes">Mensaje de alerta.</p>
                     </div>
                 </div>
-                <div class="text-right pl-4 border-l border-yellow-200">
-                    <span class="text-[10px] text-yellow-600 uppercase font-bold tracking-wider block">Base Nueva IGAC 20260612</span>
-                    <span id="valor-igac-pendiente" class="font-mono font-bold text-yellow-800 text-lg">$0</span>
+                <div class="text-right pl-4 border-l border-current/20">
+                    <span class="text-[10px] uppercase font-bold tracking-wider block opacity-70">Base IGAC 2026</span>
+                    <span id="valor-igac-pendiente" class="font-mono font-bold text-lg">$0</span>
                 </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="glass-card p-6 rounded-2xl relative overflow-hidden">
-                    <div class="absolute top-0 right-0 bg-[#00994C]/10 text-[#00994C] p-3 rounded-bl-2xl">
+                <div class="glass-card p-6 rounded-2xl relative overflow-hidden shadow-lg shadow-slate-950/40">
+                    <div class="absolute top-0 right-0 bg-blue-500/10 text-blue-400 p-3 rounded-bl-2xl">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                     </div>
-                    <p class="text-sm font-medium text-gray-500">Valor Total a Pagar</p>
-                    <h3 id="kpi-impuesto-actual" class="text-3xl font-bold mt-2 text-[#006039]">$0</h3>
-                    <div class="mt-4 flex items-center gap-1.5 text-xs text-gray-500">
+                    <p class="text-sm font-medium text-slate-400">Valor Total a Pagar</p>
+                    <h3 id="kpi-impuesto-actual" class="text-3xl font-bold mt-2 text-white">$0</h3>
+                    <div class="mt-4 flex items-center gap-1.5 text-xs text-slate-400">
                         <span>Vigencia Actual:</span>
-                        <span id="kpi-vigencia" class="font-semibold text-gray-700">2026</span>
+                        <span id="kpi-vigencia" class="font-semibold text-slate-200">2026</span>
                     </div>
                 </div>
 
-                <div class="glass-card p-6 rounded-2xl relative overflow-hidden">
-                    <div class="absolute top-0 right-0 bg-gray-100 text-gray-500 p-3 rounded-bl-2xl">
+                <div class="glass-card p-6 rounded-2xl relative overflow-hidden shadow-lg shadow-slate-950/40">
+                    <div class="absolute top-0 right-0 bg-slate-800 text-slate-400 p-3 rounded-bl-2xl">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                     </div>
-                    <p class="text-sm font-medium text-gray-500">Impuesto Año Anterior</p>
-                    <h3 id="kpi-impuesto-anterior" class="text-3xl font-bold mt-2 text-gray-700">$0</h3>
-                    <div class="mt-4 flex items-center gap-1.5 text-xs text-gray-500">
+                    <p class="text-sm font-medium text-slate-400">Impuesto Año Anterior</p>
+                    <h3 id="kpi-impuesto-anterior" class="text-3xl font-bold mt-2 text-slate-300">$0</h3>
+                    <div class="mt-4 flex items-center gap-1.5 text-xs text-slate-400">
                         <span>Diferencia en pesos:</span>
-                        <span id="kpi-diferencia-pesos" class="font-semibold text-gray-700">$0</span>
+                        <span id="kpi-diferencia-pesos" class="font-semibold text-slate-200">$0</span>
                     </div>
                 </div>
 
-                <div id="kpi-variacion-card" class="glass-card p-6 rounded-2xl relative overflow-hidden">
+                <div id="kpi-variacion-card" class="glass-card p-6 rounded-2xl relative overflow-hidden shadow-lg shadow-slate-950/40">
                     <div id="kpi-variacion-icon-container" class="absolute top-0 right-0 p-3 rounded-bl-2xl"></div>
-                    <p class="text-sm font-medium text-gray-500">Incremento del Impuesto</p>
-                    <h3 id="kpi-variacion-pct" class="text-3xl font-bold mt-2 text-[#006039]">0.00%</h3>
-                    <div class="mt-4 flex items-center gap-1.5 text-xs text-gray-500">
+                    <p class="text-sm font-medium text-slate-400">Incremento del Impuesto</p>
+                    <h3 id="kpi-variacion-pct" class="text-3xl font-bold mt-2">0.00%</h3>
+                    <div class="mt-4 flex items-center gap-1.5 text-xs text-slate-400">
                         <span>Estado de Alerta:</span>
                         <span id="kpi-alerta-texto" class="font-semibold">Normal</span>
                     </div>
@@ -170,85 +146,85 @@
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div class="glass-card p-6 rounded-2xl lg:col-span-2 space-y-6">
-                    <h4 class="text-lg font-bold text-[#006039] border-b border-gray-200 pb-3 flex items-center gap-2">
-                        <svg class="w-5 h-5 text-[#00994C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                <div class="glass-card p-6 rounded-2xl lg:col-span-2 space-y-6 shadow-lg shadow-slate-950/40">
+                    <h4 class="text-lg font-bold text-white border-b border-slate-800 pb-3 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
                         Información del Propietario e Inmueble
                     </h4>
                     
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                         <div>
-                            <p class="text-xs text-gray-500 uppercase tracking-wider font-semibold">Nombre del Propietario</p>
-                            <p id="data-nombre" class="font-medium text-gray-800 mt-0.5">-</p>
+                            <p class="text-xs text-slate-500 uppercase tracking-wider">Nombre del Propietario</p>
+                            <p id="data-nombre" class="font-semibold text-slate-200 mt-0.5">-</p>
                         </div>
                         <div>
-                            <p class="text-xs text-gray-500 uppercase tracking-wider font-semibold">NIT / Cédula</p>
-                            <p id="data-nit" class="font-medium text-gray-800 mt-0.5">-</p>
+                            <p class="text-xs text-slate-500 uppercase tracking-wider">NIT / Cédula</p>
+                            <p id="data-nit" class="font-semibold text-slate-200 mt-0.5">-</p>
                         </div>
                         <div class="sm:col-span-2">
-                            <p class="text-xs text-gray-500 uppercase tracking-wider font-semibold">Dirección del Predio</p>
-                            <p id="data-direccion" class="font-medium text-gray-800 mt-0.5">-</p>
+                            <p class="text-xs text-slate-500 uppercase tracking-wider">Dirección del Predio</p>
+                            <p id="data-direccion" class="font-semibold text-slate-200 mt-0.5">-</p>
                         </div>
                         <div>
-                            <p class="text-xs text-gray-500 uppercase tracking-wider font-semibold">Barrio / Sector</p>
-                            <p id="data-barrio" class="font-medium text-gray-800 mt-0.5">-</p>
+                            <p class="text-xs text-slate-500 uppercase tracking-wider">Barrio / Sector</p>
+                            <p id="data-barrio" class="font-semibold text-slate-200 mt-0.5">-</p>
                         </div>
                         <div>
-                            <p class="text-xs text-gray-500 uppercase tracking-wider font-semibold">Folio Matrícula</p>
-                            <p id="data-folio" class="font-medium text-gray-800 mt-0.5">-</p>
+                            <p class="text-xs text-slate-500 uppercase tracking-wider">Folio Matrícula</p>
+                            <p id="data-folio" class="font-semibold text-slate-200 mt-0.5">-</p>
                         </div>
                     </div>
                 </div>
 
-                <div class="glass-card p-6 rounded-2xl space-y-6">
-                    <h4 class="text-lg font-bold text-[#006039] border-b border-gray-200 pb-3 flex items-center gap-2">
-                        <svg class="w-5 h-5 text-[#FFD100]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path></svg>
+                <div class="glass-card p-6 rounded-2xl space-y-6 shadow-lg shadow-slate-950/40">
+                    <h4 class="text-lg font-bold text-white border-b border-slate-800 pb-3 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path></svg>
                         Datos Técnicos Catastrales
                     </h4>
                     
                     <div class="space-y-4 text-sm">
-                        <div class="flex justify-between border-b border-gray-100 pb-2">
-                            <span class="text-gray-600">Código Catastral:</span>
-                            <span id="data-codigo" class="font-mono font-medium text-gray-800 text-xs">00000000</span>
+                        <div class="flex justify-between border-b border-slate-800/50 pb-2">
+                            <span class="text-slate-400">Código Catastral:</span>
+                            <span id="data-codigo" class="font-mono font-medium text-slate-200 text-xs">00000000</span>
                         </div>
-                        <div class="flex justify-between border-b border-gray-100 pb-2">
-                            <span class="text-gray-600">Destino Económico:</span>
-                            <span id="data-destino" class="font-medium text-gray-800">-</span>
+                        <div class="flex justify-between border-b border-slate-800/50 pb-2">
+                            <span class="text-slate-400">Destino Económico:</span>
+                            <span id="data-destino" class="font-medium text-slate-200">-</span>
                         </div>
-                        <div class="flex justify-between border-b border-gray-100 pb-2">
-                            <span class="text-gray-600">Avalúo Actual:</span>
-                            <span id="data-avaluo-actual" class="font-semibold text-gray-900">$0</span>
+                        <div class="flex justify-between border-b border-slate-800/50 pb-2">
+                            <span class="text-slate-400">Avalúo Actual:</span>
+                            <span id="data-avaluo-actual" class="font-semibold text-white">$0</span>
                         </div>
-                        <div class="flex justify-between border-b border-gray-100 pb-2">
-                            <span class="text-gray-600">Avalúo Anterior:</span>
-                            <span id="data-avaluo-anterior" class="font-medium text-gray-500">$0</span>
-                        </div>
-                        
-                        <div class="flex flex-col border-b border-gray-100 pb-2">
-                            <div class="flex justify-between">
-                                <span class="text-gray-600">Área Terreno Actual:</span>
-                                <span id="data-areas-terreno-actual" class="font-medium text-gray-800">0 m²</span>
-                            </div>
-                            <div class="flex justify-between mt-1">
-                                <span class="text-gray-400 text-xs">Área Terreno Anterior:</span>
-                                <span id="data-areas-terreno-anterior" class="font-medium text-gray-500 text-xs">0 m²</span>
-                            </div>
+                        <div class="flex justify-between border-b border-slate-800/50 pb-2">
+                            <span class="text-slate-400">Avalúo Anterior:</span>
+                            <span id="data-avaluo-anterior" class="font-medium text-slate-300">$0</span>
                         </div>
                         
-                        <div class="flex flex-col border-b border-gray-100 pb-2">
+                        <div class="flex flex-col border-b border-slate-800/50 pb-2">
                             <div class="flex justify-between">
-                                <span class="text-gray-600">Área Construcción Actual:</span>
-                                <span id="data-areas-const-actual" class="font-medium text-gray-800">0 m²</span>
+                                <span class="text-slate-400">Área Terreno Actual:</span>
+                                <span id="data-areas-terreno-actual" class="font-medium text-slate-200">0 m²</span>
                             </div>
                             <div class="flex justify-between mt-1">
-                                <span class="text-gray-400 text-xs">Área Const. Anterior:</span>
-                                <span id="data-areas-const-anterior" class="font-medium text-gray-500 text-xs">0 m²</span>
+                                <span class="text-slate-500 text-xs">Área Terreno Anterior:</span>
+                                <span id="data-areas-terreno-anterior" class="font-medium text-slate-400 text-xs">0 m²</span>
+                            </div>
+                        </div>
+                        
+                        <div class="flex flex-col border-b border-slate-800/50 pb-2">
+                            <div class="flex justify-between">
+                                <span class="text-slate-400">Área Construcción Actual:</span>
+                                <span id="data-areas-const-actual" class="font-medium text-slate-200">0 m²</span>
+                            </div>
+                            <div class="flex justify-between mt-1">
+                                <span class="text-slate-500 text-xs">Área Const. Anterior:</span>
+                                <span id="data-areas-const-anterior" class="font-medium text-slate-400 text-xs">0 m²</span>
                             </div>
                         </div>
 
                         <div class="flex justify-between">
-                            <span class="text-gray-600">Estrato:</span>
-                            <span id="data-estrato" class="font-medium text-gray-800">-</span>
+                            <span class="text-slate-400">Estrato:</span>
+                            <span id="data-estrato" class="font-medium text-slate-200">-</span>
                         </div>
                     </div>
                 </div>
@@ -257,40 +233,16 @@
         </div>
     </main>
 
-    <footer class="w-full text-white p-4 md:p-12 mt-10 relative overflow-hidden font-futura bg-alcaldia-footer border-alcaldia-top">
-        <div class="container mx-auto grid grid-cols-3 gap-2 md:gap-12 text-center md:text-left text-[8px] sm:text-[10px] md:text-base relative z-10">
-
-            <div class="border-r border-white/20 md:border-none pr-2 md:pr-0 flex flex-col md:flex-row items-center gap-2 md:gap-8 text-center md:text-left">
-                <img src="logo-alcaldia.png" alt="Escudo Alcaldía de Mosquera" class="h-10 md:h-20 w-auto object-contain drop-shadow-sm" onerror="this.style.display='none';" />
-                <div class="flex flex-col">
-                    <span class="font-tommy font-bold uppercase text-[10px] md:text-xl mb-1 md:mb-3 block text-vivienda-yellow leading-tight">Contacto Oficial</span>
-                    <a href="https://www.mosquera-cundinamarca.gov.co/directorio-institucional/secretaria-de-planeacion" target="_blank" rel="noopener noreferrer" class="mt-1 text-white/80 font-bold transition-colors duration-300 hover:text-vivienda-yellow leading-tight">Secretaría de Planeación</a>
-                    <p class="mt-1 md:mt-2 text-white/80 leading-tight">Mosquera, Cundinamarca</p>
-                </div>
-            </div>
-
-            <div class="flex flex-col items-center justify-start md:justify-center border-r border-white/20 md:border-l md:border-r md:border-white/10 px-2 md:px-8">
-                <div class="flex flex-col gap-1 mb-1 md:mb-2">
-                    <span class="text-[7px] md:text-xs font-tommy font-bold uppercase tracking-widest text-center text-white/90 leading-tight">© 2026 Dirección de las TIC</span>
-                </div>
-                <span class="text-[7px] md:text-xs text-center mt-1 md:mt-3 text-white/80 leading-tight">Desarrollado por <br />
-                    <a href="https://www.hostaddrees.com/" target="_blank" rel="noopener noreferrer" class="text-vivienda-yellow hover:text-white hover:underline font-tommy font-bold transition-colors duration-300">Hostaddrees - Wilson David Saa Aldana</a>
-                </span>
-            </div>
-
-            <div class="pl-2 md:pl-0 flex flex-col-reverse md:flex-row items-center justify-start md:justify-end gap-2 md:gap-6 text-center md:text-right">
-                <div class="flex flex-col">
-                    <span class="font-tommy font-bold uppercase text-[10px] md:text-xl mb-1 md:mb-3 block text-vivienda-yellow leading-tight">Atención</span>
-                    <p class="leading-tight">Plataforma habilitada 24/7</p>
-                    <p class="mt-1 md:mt-2 text-white/80 leading-tight">Para trámites presenciales:</p>
-                    <p class="font-bold leading-tight">Palacio Municipal - Cra. 2 #2-68</p>
-                    <p class="leading-tight">Lunes a Viernes (8:00am a 5:00pm)</p>
-                </div>
-            </div>
+    <footer class="border-t border-slate-800 bg-slate-950/80 py-6 text-center text-xs text-slate-500 mt-auto">
+        <div class="max-w-6xl mx-auto px-4 flex flex-col items-center">
+            <img src="logo.png" alt="Logo Institucional" class="h-10 w-auto object-contain mb-3 opacity-70 hover:opacity-100 transition-opacity" onerror="this.style.display='none';" />
+            
+            <p>© 2026 Portal de Consulta de Información Catastral y Financiera.</p>
+            <p class="mt-1 text-slate-600">Desplegado de forma estática en GitHub Pages de manera segura sin almacenamiento de datos en servidores externos.</p>
         </div>
     </footer>
 
-   <script>
+    <script>
         let database = [];
         let pendientesData = [];
         let currentSuggestions = [];
@@ -299,7 +251,6 @@
             const loader = document.getElementById('loading-state');
             const searchBox = document.getElementById('search-container');
 
-            // Cargar base principal de consulta
             Papa.parse('data.csv', {
                 download: true,
                 header: true,
@@ -307,7 +258,7 @@
                 beforeFirstChunk: function(chunk) {
                     let lines = chunk.split(/\r\n|\n/);
                     if (lines[0] && (lines[0].includes('CONSULTA') || lines[0].includes('VISOR'))) {
-                        lines.shift(); // Elimina la fila de metadatos para tomar los nombres reales
+                        lines.shift(); 
                     }
                     return lines.join('\n');
                 },
@@ -317,7 +268,6 @@
                 complete: function(results) {
                     database = results.data;
                     
-                    // Cargar base de pendientes
                     Papa.parse('pendientes.csv', {
                         download: true,
                         header: true,
@@ -358,7 +308,6 @@
             });
         });
 
-        // Limpieza de texto para el buscador
         function normalizeString(str) {
             if (!str) return '';
             return str.toString()
@@ -397,17 +346,14 @@
             resultsEl.classList.add('hidden');
         }
 
-        // Recuperar texto buscable de data.csv (CONSULTA)
         function getSearchableTextData(row) {
             return normalizeString(`${row['COD_ACM']} ${row['Codigo catastral']} ${row['Codigo anterior']} ${row['Nit']} ${row['Nombre']} ${row['Direccion del predio']} ${row['FOLIO MATRICULA']}`);
         }
 
-        // Recuperar texto buscable de pendientes.csv
         function getSearchableTextPendientes(row) {
-            return normalizeString(`${row['COD_ACM']} ${row['NoPredial']} ${row['Nombre']} ${row['Direccion']} ${row['MatriculaInmobiliaria_ACM']}`);
+            return normalizeString(`${row['COD_ACM']} ${row['NUMERO_ORIGINAL_SNC']} ${row['NoPredial']} ${row['Nombre']} ${row['DOCUMENTO']} ${row['Direccion']} ${row['MatriculaInmobiliaria_ACM']} ${row['Base Nueva IGAC 20260612']}`);
         }
 
-        // LÓGICA DE SUGERENCIAS EN TIEMPO REAL
         function handleInput() {
             const inputVal = document.getElementById('search-input').value;
             const normalizedInput = normalizeString(inputVal);
@@ -421,19 +367,16 @@
 
             const searchTerms = normalizedInput.split(' ').filter(t => t.trim() !== '');
 
-            // Buscar en data.csv
             let matchesData = database.filter(row => {
                 const text = getSearchableTextData(row);
                 return searchTerms.every(term => text.includes(term));
             }).map(row => ({ ...row, origen: 'data' }));
 
-            // Buscar en pendientes.csv
             let matchesPendientes = pendientesData.filter(row => {
                 const text = getSearchableTextPendientes(row);
                 return searchTerms.every(term => text.includes(term));
             }).map(row => ({ ...row, origen: 'pendiente' }));
 
-            // Unir y filtrar duplicados (priorizando data.csv)
             const unificados = [];
             const codigosVistos = new Set();
             
@@ -464,23 +407,23 @@
                 const dir = predio['Direccion del predio'] || predio['Direccion'] || 'Sin dirección';
                 const folio = predio['FOLIO MATRICULA'] || predio['MatriculaInmobiliaria_ACM'] || 'Sin matrícula';
                 const propietario = predio['Nombre'] || 'Sin nombre';
-                const nitDoc = predio['Nit'] || 'Sin documento';
-                const badge = predio.origen === 'pendiente' ? '<span class="bg-red-100 text-red-600 px-1.5 py-0.5 rounded text-[9px] font-bold ml-2">PENDIENTE</span>' : '';
+                const nitDoc = predio['Nit'] || predio['DOCUMENTO'] || 'Sin documento';
+                const badge = predio.origen === 'pendiente' ? '<span class="bg-rose-500/20 text-rose-300 px-1.5 py-0.5 rounded text-[9px] font-bold ml-2 border border-rose-500/30">PENDIENTE</span>' : '';
 
                 const item = document.createElement('div');
-                item.className = 'p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0 transition-colors';
+                item.className = 'p-3 hover:bg-slate-700 cursor-pointer border-b border-slate-700/50 last:border-0 transition-colors';
                 item.onclick = () => selectSuggestion(index);
                 
                 item.innerHTML = `
                     <div class="flex justify-between items-start">
                         <div class="flex-grow">
-                            <p class="text-sm text-gray-800 font-medium truncate">${dir} ${badge}</p>
-                            <p class="text-xs text-gray-500 mt-0.5 truncate"><span class="text-gray-400">Propietario:</span> ${propietario}</p>
-                            <p class="text-[11px] text-gray-500"><span class="text-gray-400">NIT/CC:</span> ${nitDoc}</p>
+                            <p class="text-sm text-white font-medium truncate">${dir} ${badge}</p>
+                            <p class="text-xs text-slate-400 mt-0.5 truncate"><span class="text-slate-500">Propietario:</span> ${propietario}</p>
+                            <p class="text-[11px] text-slate-400"><span class="text-slate-500">NIT/CC:</span> ${nitDoc}</p>
                         </div>
                         <div class="text-right ml-2 shrink-0">
-                            <p class="text-xs text-[#006039] font-mono font-semibold">${cod}</p>
-                            <p class="text-[10px] text-gray-400 mt-0.5"><span class="text-gray-400">Matrícula:</span> ${folio}</p>
+                            <p class="text-xs text-blue-400 font-mono">${cod}</p>
+                            <p class="text-[10px] text-slate-500 mt-0.5"><span class="text-slate-600">Matrícula:</span> ${folio}</p>
                         </div>
                     </div>
                 `;
@@ -504,7 +447,7 @@
             if (currentSuggestions.length > 0 && !dropdown.classList.contains('hidden')) {
                 selectSuggestion(0);
             } else if (inputVal.trim() !== '') {
-                 handleInput(); // Re-ejecuta la lógica de búsqueda
+                 handleInput(); 
                  if (currentSuggestions.length > 0) {
                      document.getElementById('error-message').classList.add('hidden');
                      displayResult(currentSuggestions[0]);
@@ -517,7 +460,6 @@
             dropdown.classList.add('hidden');
         }
 
-        // MOSTRAR TARJETAS Y DATOS (VISOR)
         function displayResult(predio) {
             const resultsEl = document.getElementById('results-section');
             const alertaPendientes = document.getElementById('alerta-pendientes');
@@ -530,7 +472,6 @@
             let esSoloPendiente = predio.origen === 'pendiente';
             let baseIgac = 0;
 
-            // Validación cruzada para extraer el Base IGAC si existe
             if (!esSoloPendiente && pendientesData.length > 0) {
                 const match = pendientesData.find(row => {
                     const pCat = (row['NoPredial'] || '').toString().replace(/'/g, '').trim();
@@ -538,34 +479,34 @@
                     return (pCat === codigoCatastral && codigoCatastral !== '') || (pAcm === codAcm && codAcm !== '');
                 });
                 if (match) {
-                    baseIgac = parseFloat(match['Base Nueva IGAC 20260612']) || 0;
+                    baseIgac = match['Base Nueva IGAC 20260612'];
                 }
             } else if (esSoloPendiente) {
-                baseIgac = parseFloat(predio['Base Nueva IGAC 20260612']) || 0;
+                baseIgac = predio['Base Nueva IGAC 20260612'];
             }
 
-            // Configurar el letrero de Alertas
             if (esSoloPendiente) {
                 alertaPendientes.classList.remove('hidden');
-                alertaPendientes.className = "glass-card p-4 rounded-xl border-l-4 border-red-500 bg-red-50 flex items-center justify-between shadow-md";
-                h4Alerta.className = "font-bold text-red-700 text-sm";
+                alertaPendientes.className = "glass-card p-4 rounded-xl border-l-4 border-rose-500 bg-rose-500/10 flex items-center justify-between shadow-lg shadow-slate-950/40";
+                h4Alerta.className = "font-bold text-rose-400 text-sm";
                 h4Alerta.innerText = "RECIBO PENDIENTE POR GENERAR";
-                textoAlerta.className = "text-xs text-red-600 font-medium";
+                textoAlerta.className = "text-xs text-rose-300/80 font-medium";
                 textoAlerta.innerText = "El cálculo de impuestos para este predio aún no se encuentra disponible.";
-                document.getElementById('valor-igac-pendiente').innerText = baseIgac ? formatCurrency(baseIgac) : "";
-            } else if (baseIgac > 0) {
+                document.getElementById('valor-igac-pendiente').className = "font-mono font-bold text-lg text-rose-400";
+                document.getElementById('valor-igac-pendiente').innerText = baseIgac || "PENDIENTE RECIBO";
+            } else if (baseIgac) {
                 alertaPendientes.classList.remove('hidden');
-                alertaPendientes.className = "glass-card p-4 rounded-xl border-l-4 border-[#FFD100] bg-yellow-50 flex items-center justify-between shadow-md";
-                h4Alerta.className = "font-bold text-yellow-800 text-sm";
-                h4Alerta.innerText = "Registro de Base IGAC Encontrado";
-                textoAlerta.className = "text-xs text-yellow-700 font-medium";
-                textoAlerta.innerText = "Información complementaria detectada en la base de recibos.";
-                document.getElementById('valor-igac-pendiente').innerText = formatCurrency(baseIgac);
+                alertaPendientes.className = "glass-card p-4 rounded-xl border-l-4 border-amber-400 bg-amber-400/10 flex items-center justify-between shadow-lg shadow-slate-950/40";
+                h4Alerta.className = "font-bold text-amber-400 text-sm";
+                h4Alerta.innerText = "Estado de Recibo Encontrado";
+                textoAlerta.className = "text-xs text-amber-300/80 font-medium";
+                textoAlerta.innerText = "Información detectada en la base de pendientes.";
+                document.getElementById('valor-igac-pendiente').className = "font-mono font-bold text-lg text-amber-400";
+                document.getElementById('valor-igac-pendiente').innerText = isNaN(parseFloat(baseIgac)) ? baseIgac : formatCurrency(parseFloat(baseIgac));
             } else {
                 alertaPendientes.classList.add('hidden');
             }
 
-            // Datos KPI y Variación (VISOR)
             const impuestoActual = parseFloat(predio['Impuesto actual']) || 0;
             const impuestoAnterior = parseFloat(predio['Impuesto anterior']) || 0;
             const diferenciaImpuesto = parseFloat(predio['Diferencia impuesto anterior - impuesto actual']) || (impuestoActual - impuestoAnterior);
@@ -592,38 +533,35 @@
             const esMayorAlDoble = (predio['Mayor al doble?'] || '').toString().toUpperCase() === 'SI';
 
             if (esSoloPendiente) {
-                cardVariacion.className = "glass-card p-6 rounded-2xl relative overflow-hidden border-l-4 border-gray-300";
+                cardVariacion.className = "glass-card p-6 rounded-2xl relative overflow-hidden shadow-lg border-l-4 border-slate-600 shadow-slate-950/40";
                 textAlerta.innerText = "Sin Datos";
-                textAlerta.className = "font-semibold text-gray-400";
-                document.getElementById('kpi-variacion-pct').className = "text-3xl font-bold mt-2 text-gray-400";
+                textAlerta.className = "font-semibold text-slate-500";
+                document.getElementById('kpi-variacion-pct').className = "text-3xl font-bold mt-2 text-slate-500";
                 iconContainer.className = "hidden";
             } else if (esMayorAlDoble || varPctImpuesto > 50) {
-                cardVariacion.className = "glass-card p-6 rounded-2xl relative overflow-hidden border-l-4 border-red-500 bg-red-50/50";
+                cardVariacion.className = "glass-card p-6 rounded-2xl relative overflow-hidden shadow-lg border-l-4 border-rose-500 shadow-slate-950/40";
                 textAlerta.innerText = "Alerta: Incremento Elevado";
-                textAlerta.className = "font-semibold text-red-600";
-                document.getElementById('kpi-variacion-pct').className = "text-3xl font-bold mt-2 text-red-600";
-                iconContainer.className = "absolute top-0 right-0 bg-red-100 text-red-500 p-3 rounded-bl-2xl";
+                textAlerta.className = "font-semibold text-rose-400";
+                document.getElementById('kpi-variacion-pct').className = "text-3xl font-bold mt-2 text-rose-400";
+                iconContainer.className = "absolute top-0 right-0 bg-rose-500/10 text-rose-400 p-3 rounded-bl-2xl";
                 iconContainer.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`;
             } else {
-                cardVariacion.className = "glass-card p-6 rounded-2xl relative overflow-hidden border-l-4 border-[#00994C]";
+                cardVariacion.className = "glass-card p-6 rounded-2xl relative overflow-hidden shadow-lg border-l-4 border-emerald-500 shadow-slate-950/40";
                 textAlerta.innerText = "Incremento Normal";
-                textAlerta.className = "font-semibold text-[#00994C]";
-                document.getElementById('kpi-variacion-pct').className = "text-3xl font-bold mt-2 text-[#00994C]";
-                iconContainer.className = "absolute top-0 right-0 bg-[#00994C]/10 text-[#00994C] p-3 rounded-bl-2xl";
+                textAlerta.className = "font-semibold text-emerald-400";
+                document.getElementById('kpi-variacion-pct').className = "text-3xl font-bold mt-2 text-emerald-400";
+                iconContainer.className = "absolute top-0 right-0 bg-emerald-500/10 text-emerald-400 p-3 rounded-bl-2xl";
                 iconContainer.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>`;
             }
 
-            // Datos Técnicos e Información del Propietario
             document.getElementById('data-nombre').innerText = predio['Nombre'] || 'No Registrado';
-            document.getElementById('data-nit').innerText = predio['Nit'] || 'No Disponible';
+            document.getElementById('data-nit').innerText = predio['Nit'] || predio['DOCUMENTO'] || 'No Disponible';
             document.getElementById('data-direccion').innerText = predio['Direccion del predio'] || predio['Direccion'] || 'No Disponible';
-            
             document.getElementById('data-barrio').innerText = predio['BARRIO/SECTOR'] || predio['Barrio'] || '-';
             document.getElementById('data-folio').innerText = predio['FOLIO MATRICULA'] || predio['MatriculaInmobiliaria_ACM'] || 'No Registrado';
             document.getElementById('data-codigo').innerText = (predio['Codigo catastral'] || predio['NoPredial'] || predio['COD_ACM'] || '').replace(/'/g, '');
             document.getElementById('data-destino').innerText = predio['Destino economico'] || predio['Destino economico actual'] || '-';
             
-            // Reemplazo visual de guiones en lugar de 0s si el predio está en pendiente
             document.getElementById('data-avaluo-actual').innerText = esSoloPendiente ? '-' : formatCurrency(avaluoActual);
             document.getElementById('data-avaluo-anterior').innerText = esSoloPendiente ? '-' : formatCurrency(avaluoAnterior);
             document.getElementById('data-areas-terreno-actual').innerText = esSoloPendiente ? '-' : `${metrosTerrenoActual} m²`;
